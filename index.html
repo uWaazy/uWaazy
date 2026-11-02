@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>W ∆ G N E R . — uWaazy</title>
+<meta name="description" content="Now playing, now watching, now gaming — and a Kanye vs Taylor mini game.">
+<meta name="theme-color" content="#0b0c10">
+<meta property="og:title" content="W ∆ G N E R . (uWaazy)">
+<meta property="og:description" content="Now playing, now watching, now gaming.">
+<meta property="og:image" content="assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0c10; --card:#12141b; --card2:#171a23; --line:#222633; --text:#e8ecf5; --muted:#8a91a6;
+  --cyan:#22d3ee; --gold:#fbbf24; --purple:#8b5cf6; --live:#34d399; --ruby:#ff3b5c;
+  --player-bg:transparent;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--text);font:15px/1.45 'Space Grotesk',system-ui,sans-serif;
+  min-height:100vh;min-height:100dvh;display:flex;justify-content:center;align-items:center;
+  padding:max(20px,env(safe-area-inset-top)) 16px max(20px,env(safe-area-inset-bottom))}
+body.no-bg{background:transparent}
+body.no-bg .bgfx{display:none!important}
+.bgfx{position:fixed;inset:0;z-index:-1;overflow:hidden;background:radial-gradient(900px 500px at 85% -10%,#161a2b 0%,transparent 60%),var(--bg)}
+.bgfx::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(11,12,16,.15) 0%,rgba(11,12,16,.72) 100%)}
+.bgl{position:absolute;inset:-14%;background-size:cover;background-position:center;opacity:0;transition:opacity 1.8s ease;
+  filter:blur(52px) saturate(1.4) brightness(.62);will-change:transform,opacity;animation:bgdrift 34s ease-in-out infinite alternate}
+.bgl.on{opacity:1}
+#bg2{animation-duration:41s;animation-direction:alternate-reverse}
+@keyframes bgdrift{0%{transform:scale(1.08) translate3d(-3%,-2%,0) rotate(0deg)}50%{transform:scale(1.22) translate3d(3%,2%,0) rotate(2.5deg)}100%{transform:scale(1.12) translate3d(-1%,3%,0) rotate(-2deg)}}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.hub{width:100%;max-width:760px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;align-self:center;margin:auto;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+
+.head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.who{display:flex;align-items:center;gap:14px;min-width:0}
+.avatar{position:relative;width:66px;height:66px;border-radius:50%;padding:2px;flex:none;background:conic-gradient(from 200deg,var(--purple),var(--cyan),var(--purple))}
+.avatar img{width:100%;height:100%;border-radius:50%;background:#0d0f15;object-fit:contain;padding:6px;display:block}
+.avatar i{position:absolute;right:0;bottom:1px;width:13px;height:13px;border-radius:50%;background:var(--gold);border:3px solid var(--card)}
+.who h1{font-size:clamp(25px,3.8vw,34px);letter-spacing:.24em;font-weight:700;white-space:nowrap}.brand-dot{letter-spacing:0;margin-left:-.22em}
+.who p{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:4px;padding:4px;background:#0e1016;border:1px solid var(--line);border-radius:14px}
+.tab{background:none;border:0;color:var(--muted);font:600 13px 'Space Grotesk',sans-serif;padding:9px 14px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.tab[aria-selected=true]{background:var(--card2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+.tab[data-tab=game][aria-selected=true]{color:var(--gold);box-shadow:inset 0 0 0 1px #5b4413}
+.panel{display:none;padding-top:18px}.panel.on{display:block}
+
+.sec{margin-bottom:18px}
+.lbl{font-size:12px;color:var(--muted);margin:0 2px 8px;display:flex;justify-content:space-between;align-items:center}
+.player{display:grid;grid-template-columns:minmax(0,1fr) 236px;gap:14px;align-items:stretch}
+.pl{display:flex;flex-direction:column;justify-content:space-between;align-self:stretch;width:100%;min-width:0;gap:4px;background:var(--player-bg);border-radius:16px}
+.frame{position:relative;flex:1;min-height:138px;overflow:hidden;background:var(--player-bg)}
+.frame>iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;color-scheme:dark}
+.frame.embed .track-view{display:none}
+.track-view{height:100%;display:flex;align-items:center;gap:20px;padding:10px 14px 6px 18px;min-width:0;background:var(--player-bg)}
+.track-art{position:relative;overflow:hidden;width:114px;height:114px;flex:none;border-radius:20px;background:var(--card2);box-shadow:0 12px 34px rgba(0,0,0,.5);isolation:isolate}
+.ta-cover{transition:opacity .4s;position:absolute;inset:0;background:center/cover no-repeat;display:grid;place-items:center;font-size:34px;color:#4a5170}
+.ta-np{position:absolute;left:var(--np-ax,-3px);top:var(--np-ay,-3px);width:var(--np-w,540px);height:var(--np-h,140px);border:0;background:transparent;color-scheme:dark;
+  transform:scale(var(--np-s,.88));transform-origin:0 0;pointer-events:none;opacity:0;transition:opacity .5s}
+.track-view:not(.live) .ta-np{opacity:0!important}
+.track-view.live .ta-cover{inset:4px;border-radius:16px}
+.track-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:6px}
+.track-state{display:inline-flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:.12em;font-weight:700;color:var(--muted);text-transform:uppercase}
+.track-view.live .track-state{color:var(--live)}
+.eq{display:none;align-items:flex-end;gap:2px;height:13px}.track-view.live .eq{display:inline-flex}
+.eq s{width:3px;height:100%;background:var(--live);border-radius:2px;transform-origin:bottom;animation:eq .9s ease-in-out infinite}
+.eq s:nth-child(1){animation-duration:.62s}.eq s:nth-child(2){animation-duration:.95s;animation-delay:-.3s}.eq s:nth-child(3){animation-duration:.74s;animation-delay:-.5s}.eq s:nth-child(4){animation-duration:1.1s;animation-delay:-.15s}
+@keyframes eq{0%,100%{transform:scaleY(.25)}25%{transform:scaleY(1)}50%{transform:scaleY(.45)}75%{transform:scaleY(.85)}}
+.track-title{font-size:clamp(20px,3.1vw,30px);line-height:1.12;font-weight:700;color:#fff;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
+.track-artist{font-size:clamp(14px,1.9vw,18px);font-weight:600;color:#f5c518;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.track-insights{display:flex;flex-wrap:wrap;align-items:center;gap:4px 5px;padding:2px 8px 4px 14px;background:var(--player-bg);border:0;border-radius:10px;min-height:22px;transition:opacity .25s ease}
+.track-insights[hidden]{display:none!important}
+.ti-pill{display:inline-flex;align-items:center;gap:3.5px;padding:2px 6px;border-radius:99px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);font-size:9px;line-height:1.25;color:#b9c0d4;white-space:nowrap;flex:none;transition:border-color .2s,color .2s}
+.ti-pill:hover{border-color:#3e4663;color:var(--text)}
+.ti-pill b{color:var(--text);font-weight:600}
+.ti-pill .ti-alb-name{display:inline-block;max-width:110px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+.ti-pill.ti-album{border-color:rgba(251,191,36,.28);background:rgba(251,191,36,.05)}
+.ti-pill.ti-album b{color:var(--gold)}
+.ti-pill.ti-loved{background:rgba(255,59,92,.11);border-color:rgba(255,59,92,.4);color:#ff758f;font-weight:600}
+.ti-pill.ti-loved:hover{border-color:var(--ruby);background:rgba(255,59,92,.18)}
+.ti-heart{width:10px;height:10px;fill:var(--ruby);flex:none;filter:drop-shadow(0 0 3px rgba(255,59,92,.6));animation:heartBeat 1.6s ease-in-out infinite}
+.ti-play{width:9px;height:9px;fill:var(--cyan);flex:none}
+@keyframes heartBeat{0%,100%{transform:scale(1)}30%{transform:scale(1.22)}60%{transform:scale(.95)}}
+.ti-dot{width:4px;height:4px;border-radius:50%;background:var(--cyan);flex:none}
+.ti-dot.art{background:var(--purple)}
+
+.side{display:flex;flex-direction:column;gap:10px}
+.album-chip{position:relative;min-width:0;flex:1 1 0;display:flex;align-items:center;gap:10px;padding:9px 9px 14px;background:var(--card2);border:1px solid var(--line);border-radius:14px;transition:border-color .2s,transform .2s;overflow:hidden}
+.album-chip:hover{border-color:#3a4157}
+.album-chip img{width:54px;height:54px;flex:none;object-fit:cover;border-radius:9px;background:#0e1016;transition:opacity .22s ease,transform .22s ease}
+.album-chip img.round{border-radius:50%;border:1.5px solid rgba(255,255,255,.14)}
+.album-chip .album-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px;transition:opacity .22s ease,transform .22s ease}
+.album-chip.swapping img,.album-chip.swapping .album-copy{opacity:.18;transform:translateY(3px)}
+.album-chip small{font-size:8.7px;letter-spacing:-.01em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.album-chip strong{font-size:11.8px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.album-chip .album-meta{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.album-chip.lf strong{color:#ff5a5f}.album-chip.sf strong{color:#1ed760}
+.chip-dots{position:absolute;right:8px;bottom:4px;display:flex;gap:3px;align-items:center;z-index:2}
+.chip-dot{width:4px;height:4px;border-radius:99px;background:#2d3348;border:0;padding:0;cursor:pointer;transition:width .2s,background .2s}
+.chip-dot.on{width:10px}
+.album-chip.lf .chip-dot.on{background:#ff5a5f}
+.album-chip.sf .chip-dot.on{background:#1ed760}
+
+.card{display:flex;gap:14px;align-items:center;padding:14px;background:var(--card2);border:1px solid var(--line);border-radius:16px}
+.poster{width:64px;height:92px;border-radius:10px;flex:none;background:linear-gradient(160deg,#2a2f45,#171a23);background-size:cover;background-position:center;display:grid;place-items:center;font-size:22px;color:#4a5170;font-weight:700}
+.poster.sq{width:84px;height:84px;border-radius:12px}
+.info{min-width:0;flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;background:#1d2130;color:var(--muted)}
+.pill.live{background:rgba(52,211,153,.12);color:var(--live)}
+.pill.live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--live);animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.title{font-size:16px;font-weight:700;margin:7px 0 1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta{font-size:12.5px;color:var(--muted)}
+.bar{height:4px;border-radius:4px;background:#232839;margin-top:10px;overflow:hidden}
+.bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--purple),var(--cyan));transition:width 1s linear}
+.games{display:flex;flex-direction:column;gap:8px}
+.mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:#0f1117;border:1px solid var(--line);font-size:13px}
+.mini .poster{width:32px;height:44px;border-radius:6px;font-size:12px}
+.mini span{color:var(--muted);margin-left:auto;font-size:12px;white-space:nowrap}
+.profile{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border:1px dashed #2d3349;border-radius:12px;font-size:13px;color:var(--muted)}
+.profile img{width:26px;height:26px;border-radius:50%;background:#0d0f15;padding:3px}
+.profile b{color:var(--text)}.profile em{margin-left:auto;font-style:normal;color:var(--cyan)}
+
+.gh-wrap{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.gh{display:flex;align-items:center;gap:12px;padding:12px;background:var(--card2);border:1px solid var(--line);border-radius:14px;transition:border-color .2s}
+.gh:hover{border-color:#3a4157}
+.gh img{width:44px;height:44px;border-radius:50%;flex:none;background:#0d0f15}
+.gh-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+.gh-copy b{font-size:13.5px}.gh-copy b small{font-weight:400;color:var(--muted);font-size:12px}
+.gh-msg{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gh-sub{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gh-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+.gh-stack-btn{background:#0e1016;border:1px solid #2b3042;color:var(--text);font:600 11.5px 'Space Grotesk',sans-serif;padding:6px 11px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.2s}
+.gh-stack-btn:hover,.gh-stack-btn[aria-expanded=true]{border-color:var(--purple);color:#d8b4fe;background:rgba(139,92,246,.12)}
+.gh em{font-style:normal;color:var(--cyan);font-size:13px;white-space:nowrap}
+
+.stacks-card{background:#0d0f15;border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:16px}
+.stacks-card[hidden]{display:none!important}
+.stacks-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.stacks-brand{display:flex;align-items:stretch;gap:12px}
+.stacks-bar{width:4px;border-radius:4px;background:var(--purple);box-shadow:0 0 12px rgba(139,92,246,.55)}
+.stacks-titles{display:flex;flex-direction:column;justify-content:center;gap:1px}
+.stacks-titles small{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;font-weight:600}
+.stacks-titles h3{font-size:20px;font-weight:700;letter-spacing:.04em;color:#fff;line-height:1.1}
+.stacks-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 22px}
+.stack-cat{display:flex;flex-direction:column;gap:9px}
+.stack-cat-lbl{display:inline-flex;align-items:center;gap:7px;font-size:10.5px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;font-weight:600}
+.stack-cat-lbl::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--purple);box-shadow:0 0 6px var(--purple)}
+.stack-items{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.stack-item{display:inline-flex;align-items:center;gap:7px;padding:4px 8px 4px 5px;border-radius:8px;font-size:13px;font-weight:600;color:var(--text);background:transparent;border:1px solid transparent;transition:background .18s,border-color .18s,transform .18s,opacity .2s}
+.stack-item:hover{background:var(--card2);border-color:#2a3045;transform:translateY(-1px)}
+.stack-item.dim{opacity:.28}
+.stack-item img{width:18px;height:18px;object-fit:contain;flex:none}
+.stack-pct{font-size:10px;color:var(--muted);font-weight:400;margin-left:1px}
+.stacks-foot{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid #181c27;color:var(--muted);font-size:11px}
+.stacks-modes{display:flex;align-items:center;gap:10px;margin-left:auto}
+.stack-mode{background:none;border:0;color:#58607a;cursor:pointer;padding:4px;border-radius:6px;display:grid;place-items:center;transition:color .2s,filter .2s}
+.stack-mode:hover,.stack-mode.on{color:#818cf8;filter:drop-shadow(0 0 6px rgba(129,140,248,.6))}
+.stack-mode svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+.bible-verse{margin:2px 0 14px;padding:9px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(23,26,35,.86),rgba(15,17,24,.92));border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bv-left{display:inline-flex;align-items:center;gap:8px;min-width:0;flex:1}
+.bv-ico{font-style:normal;font-size:13px;line-height:1;flex:none}
+.bv-ref{color:var(--cyan);font-weight:600;letter-spacing:.03em;text-transform:none;font-size:10.5px;white-space:nowrap;flex:none;margin-left:auto}
+.bv-text{font-size:11.6px;line-height:1.35;color:#d6dced;font-style:italic;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.links{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;justify-content:center}
+.links a{font-size:12px;padding:6px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted);transition:.2s;display:inline-flex;align-items:center;gap:6px}
+.links a:hover{color:var(--text);border-color:#3a4157}.links img{width:14px;height:14px;object-fit:contain}.simkl-heading{display:inline-flex;align-items:center;gap:6px}.simkl-heading img{width:13px;height:13px;object-fit:contain}.link-mark{width:16px;height:16px;display:inline-grid;place-items:center;border-radius:4px;font-size:11px;font-weight:700}.lf-mark{background:#d51007;color:white}.sf-mark{background:#1ed760;color:#07130b}.simkl-mark{background:#f04f4f;color:white}.ygp-mark{background:#536dfe;color:white}
+
+.gbar{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;margin-bottom:10px;flex-wrap:wrap}
+.tag{color:var(--gold);border:1px solid #5b4413;background:#241c0a;border-radius:8px;padding:4px 9px;font-weight:600}
+.gbar .sc{color:var(--muted);display:flex;gap:14px}.sc b{color:var(--cyan);font-weight:600}.sc b:last-of-type{color:var(--gold)}
+.stage{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:linear-gradient(#0c0e14,#10131b)}
+canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:manipulation;cursor:pointer;position:relative}
+.gbg{position:absolute;inset:0;background:url(assets/taylor-surprised.jpg) center 28%/cover no-repeat;opacity:0;filter:saturate(1.2) contrast(1.08) brightness(.7);pointer-events:none}
+.gbg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,110,20,.28),rgba(10,12,18,.62)),radial-gradient(ellipse at 50% 40%,transparent 30%,rgba(8,9,13,.7) 100%)}
+.over{position:absolute;inset:0;display:grid;place-items:center;text-align:center;background:rgba(8,9,13,.55);backdrop-filter:blur(2px);font-size:14px;cursor:pointer}
+.over.off{display:none}.over small{display:block;color:var(--muted);margin-top:4px}
+.jump{width:100%;margin-top:12px;padding:15px;border-radius:14px;border:1px solid var(--line);background:var(--card2);color:var(--gold);font:600 13px 'JetBrains Mono',monospace;letter-spacing:.04em;cursor:pointer}
+.jump:active{transform:scale(.98)}
+
+@media(min-width:561px) and (max-width:899px){.track-art{width:102px;height:102px}.frame{min-height:132px}}
+@media(min-width:900px){.hub{max-width:860px}.player{grid-template-columns:minmax(0,1fr) 256px;gap:16px}.album-chip img{width:56px;height:56px}.who h1{font-size:36px}.avatar{width:72px;height:72px}}
+@media(max-width:560px){
+  .hub{padding:16px;border-radius:18px}
+  .who h1{font-size:22px;letter-spacing:.15em}.avatar{width:56px;height:56px}
+  .tabs{width:100%}.tab{flex:1;padding:10px 8px}
+  .player{grid-template-columns:minmax(0,1fr)}.side{flex-direction:row;min-width:0}.album-chip{padding:8px 8px 13px;gap:7px}.album-chip img{width:42px;height:42px}.album-chip small{font-size:8px}.album-chip strong{font-size:10.5px}.album-chip .album-meta{font-size:8.8px}
+  .frame{min-height:108px}.track-view{gap:14px;padding:8px 10px 4px 12px}.track-insights{padding:2px 6px 4px 12px}.track-art{width:84px;height:84px;border-radius:16px;font-size:28px}.ta-cover{font-size:28px}.track-title{font-size:19px}.track-artist{font-size:13.5px}
+  .gh{padding:10px}.gh em{display:none}
+  .stacks-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+}
+@media(prefers-reduced-motion:reduce){.pill.live::before,.bgl,.ti-heart{animation:none}.bar span,.bgl{transition:none}}
+</style>
+</head>
+<body>
+<div class="bgfx" aria-hidden="true"><div class="bgl" id="bg1"></div><div class="bgl" id="bg2"></div></div>
+<main class="hub">
+  <header class="head">
+    <div class="who">
+      <div class="avatar"><img src="assets/logo.webp" alt="Wagner logo"><i title="online"></i></div>
+      <div><h1>W ∆ G N E R<span class="brand-dot">.</span></h1></div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="wagner" aria-selected="true">uWaazy</button>
+      <button class="tab" role="tab" data-tab="game" aria-selected="false">Kanye vs Taylor</button>
+    </div>
+  </header>
+
+  <section id="p-wagner" class="panel on" role="tabpanel">
+    <div class="sec">
+      <div class="lbl"><span data-i18n="listening">Listening</span></div>
+      <div class="player">
+        <div class="pl">
+          <div class="frame" id="pf">
+            <div class="track-view" id="track-view">
+              <div class="track-art" id="track-art" role="img" aria-label="Album art"><div class="ta-cover" id="ta-cover">♪</div></div>
+              <div class="track-copy">
+                <small class="track-state"><i class="eq"><s></s><s></s><s></s><s></s></i><span id="track-state-t"></span></small>
+                <b class="track-title" id="track-title"></b>
+                <span class="track-artist" id="track-artist"></span>
+              </div>
+            </div>
+          </div>
+          <div class="track-insights" id="track-insights" hidden></div>
+        </div>
+        <div class="side">
+          <a class="album-chip lf" id="lf-chip" href="https://www.last.fm/user/WagnerSilva17" target="_blank" rel="noopener">
+            <img id="lf-image" alt="" hidden>
+            <span class="album-copy">
+              <small id="lf-label"></small>
+              <strong id="lf-value"></strong>
+              <span class="album-meta" id="lf-meta"></span>
+            </span>
+            <span class="chip-dots" id="lf-dots"></span>
+          </a>
+          <a class="album-chip sf" id="sf-chip" href="https://stats.fm/uwaazy" target="_blank" rel="noopener">
+            <img id="sf-image" alt="" hidden>
+            <span class="album-copy">
+              <small id="sf-label"></small>
+              <strong id="sf-value"></strong>
+              <span class="album-meta" id="sf-meta"></span>
+            </span>
+            <span class="chip-dots" id="sf-dots"></span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl"><span data-i18n="watching">Watching</span><a class="mono simkl-heading" href="https://simkl.com/8094166/" target="_blank" rel="noopener">simkl ↗</a></div>
+      <a id="watch" class="card" href="https://simkl.com/8094166/dashboard/" target="_blank" rel="noopener">
+        <div class="poster" id="w-poster">▶</div>
+        <div class="info">
+          <span class="pill" id="w-pill"></span>
+          <div class="title" id="w-title">—</div>
+          <div class="meta" id="w-meta"></div>
+          <div class="bar" id="w-bar" hidden><span></span></div>
+        </div>
+      </a>
+    </div>
+
+    <div class="sec">
+      <div class="lbl"><span data-i18n="playing">Playing</span><a class="mono" href="https://yourgamerprofile.com/uWaazy" target="_blank" rel="noopener">yourgamerprofile ↗</a></div>
+      <div class="card" id="game-card">
+        <div class="poster sq" id="g-poster">🎮</div>
+        <div class="info">
+          <span class="pill" id="g-pill"></span>
+          <div class="title" id="g-title">—</div>
+          <div class="meta" id="g-meta"></div>
+        </div>
+      </div>
+      <div class="games" id="g-more" style="margin-top:8px"></div>
+      <a class="profile" href="https://yourgamerprofile.com/uWaazy" target="_blank" rel="noopener">
+        <img src="assets/logo.png" alt=""><span><b>uWaazy</b> <span data-i18n="onYgp">on Your Gamer Profile</span></span><em data-i18n="open">open ↗</em>
+      </a>
+
+      <div class="gh-wrap">
+        <div class="gh" id="gh">
+          <a href="https://github.com/uWaazy" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;min-width:0;flex:1">
+            <img id="gh-av" src="https://github.com/uWaazy.png?size=96" alt="">
+            <span class="gh-copy"><b>uWaazy <small data-i18n="onGh">on GitHub</small></b><span class="gh-msg" id="gh-msg"></span><span class="gh-sub" id="gh-sub"></span></span>
+          </a>
+          <div class="gh-actions">
+            <button type="button" class="gh-stack-btn" id="gh-stack-btn" aria-expanded="true">
+              <span>⚡</span><span data-i18n="stacksBtn">Stacks</span>
+            </button>
+            <a href="https://github.com/uWaazy" target="_blank" rel="noopener"><em data-i18n="open">open ↗</em></a>
+          </div>
+        </div>
+
+        <div class="stacks-card" id="stacks-card">
+          <div class="stacks-head">
+            <div class="stacks-brand">
+              <span class="stacks-bar"></span>
+              <div class="stacks-titles">
+                <small class="mono" data-i18n="devStack">DEVELOPER STACK</small>
+                <h3 data-i18n="stacksTitle">STACKS</h3>
+              </div>
+            </div>
+          </div>
+          <div class="stacks-grid">
+            <div class="stack-cat">
+              <span class="stack-cat-lbl mono" data-i18n="stLanguages">LANGUAGES</span>
+              <div class="stack-items" id="st-langs"></div>
+            </div>
+            <div class="stack-cat">
+              <span class="stack-cat-lbl mono" data-i18n="stPlatforms">PLATFORMS</span>
+              <div class="stack-items" id="st-platforms"></div>
+            </div>
+            <div class="stack-cat">
+              <span class="stack-cat-lbl mono" data-i18n="stData">DATA</span>
+              <div class="stack-items" id="st-data"></div>
+            </div>
+            <div class="stack-cat">
+              <span class="stack-cat-lbl mono" data-i18n="stTools">TOOLS</span>
+              <div class="stack-items" id="st-tools"></div>
+            </div>
+          </div>
+          <div class="stacks-foot mono">
+            <span id="stacks-repo-note">github.com/uWaazy</span>
+            <div class="stacks-modes">
+              <button type="button" class="stack-mode on" data-mode="all" title="All Stacks" aria-label="All Stacks">
+                <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              </button>
+              <button type="button" class="stack-mode" data-mode="web" title="Web & Cloud" aria-label="Web & Cloud">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              </button>
+              <button type="button" class="stack-mode" data-mode="sys" title="Desktop & Automation" aria-label="Desktop & Automation">
+                <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bible-verse" id="bible-verse">
+      <span class="bv-left"><i class="bv-ico" aria-hidden="true">📖</i><span class="bv-text" id="bv-text"></span></span>
+      <span class="bv-ref mono" id="bv-ref"></span>
+    </div>
+
+    <div class="links">
+      <a href="https://www.instagram.com/uwaazy/" target="_blank" rel="noopener"><img src="https://cdn.simpleicons.org/instagram/e8ecf5" alt=""> Instagram</a>
+      <a href="https://discord.gg/cE6B2azY73" target="_blank" rel="noopener"><img src="https://cdn.simpleicons.org/discord/5865F2" alt=""> Discord</a>
+      <a href="https://www.twitch.tv/uWaazy" target="_blank" rel="noopener"><img src="https://cdn.simpleicons.org/twitch/9146FF" alt=""> Twitch</a>
+      <a href="https://www.youtube.com/@uWaazy" target="_blank" rel="noopener"><img src="https://cdn.simpleicons.org/youtube/FF0000" alt=""> YouTube</a>
+      <a href="https://stats.fm/uwaazy" target="_blank" rel="noopener"><span class="link-mark sf-mark">s</span> stats.fm</a>
+      <a href="https://www.last.fm/user/WagnerSilva17" target="_blank" rel="noopener"><span class="link-mark lf-mark">♫</span> Last.fm</a>
+      <a href="https://simkl.com/8094166/" target="_blank" rel="noopener"><img src="assets/simkl.svg" alt=""> Simkl</a>
+      <a href="https://yourgamerprofile.com/uWaazy" target="_blank" rel="noopener"><span class="link-mark ygp-mark">Y</span> YGP</a>
+      <a href="https://github.com/uWaazy" target="_blank" rel="noopener"><img src="https://cdn.simpleicons.org/github/e8ecf5" alt=""> GitHub</a>
+    </div>
+  </section>
+
+  <section id="p-game" class="panel" role="tabpanel">
+    <div class="gbar mono">
+      <span class="tag">VMA 2009 RUNNER</span>
+      <span data-i18n="gameJump">Jump over Taylor's trophy!</span>
+      <span class="sc"><span data-i18n="hi">HI</span> <b id="hi">00000</b> <span data-i18n="score">SCORE</span> <b id="sc">00000</b></span>
+    </div>
+    <div class="stage">
+      <div class="gbg" id="gbg"></div>
+      <canvas id="cv" width="600" height="160" aria-label="Kanye vs Taylor runner game"></canvas>
+      <div class="over" id="over"><div><b id="over-t">Imma let you finish…</b><small data-i18n="gameStart">Tap, click or press Space to start</small></div></div>
+    </div>
+    <button class="jump" id="jump" data-i18n="gameBtn">KANYE JUMP (TAP / SPACE)</button>
+  </section>
+
+</main>
+
+<script>
+const Q=new URLSearchParams(location.search);
+if(Q.has('nobg')||Q.has('embed'))document.body.classList.add('no-bg');
+const CFG={simklApi:'/api/simkl',localSimkl:'http://127.0.0.1:18095/simkl',demo:!!window.PREVIEW_DEMO||Q.has('demo'),ghUser:'uWaazy'};
+const $=id=>document.getElementById(id);
+
+const I18N={
+en:{listening:'Listening',watching:'Watching',playing:'Playing',open:'open ↗',onYgp:'on Your Gamer Profile',onGh:'on GitHub',
+ nowListening:'Listening now',lastTrack:'Last track',noTrack:'No recent track',noScrobbles:'No recent scrobbles yet',lfLoading:'Loading Last.fm…',lfChecking:'Checking recent scrobbles',lfDown:'Last.fm temporarily unavailable',retrying:'Retrying automatically',
+ lfTotalLabel:'Last.fm · total scrobbles',lfTrack7d:'Last.fm · top track / week',lfAlbum7d:'Last.fm · top album / week',lfArtist7d:'Last.fm · top artist / week',lfTop:'Last.fm · top album / 6 mos',lfAlbumAll:'Last.fm · top album / total',lfTrackAll:'Last.fm · top track / total',lfArtist1y:'Last.fm · top artist / 1 year',lfArtistAll:'Last.fm · top artist / total',lfLoved:'Last.fm · loved tracks',lovedWord:'loved tracks',inProfile:'scrobbles in profile',lastWeek:'last 7 days',lastYear:'last 12 months',allTime:'all time',
+ sfTotalLabel:'stats.fm · total streams',sfTrack7d:'stats.fm · top track / week',sfAlbum7d:'stats.fm · top album / week',sfArtist7d:'stats.fm · top artist / week',sfTop:'stats.fm · top album / 4 wks',sfTrack4w:'stats.fm · top track / 4 wks',sfArtist4w:'stats.fm · top artist / 4 wks',sfAlbumAll:'stats.fm · top album / total',sfArtistAll:'stats.fm · top artist / total',sfGenre4w:'stats.fm · top genre / 4 wks',sfPlaylist4w:'stats.fm · top playlist / 4 wks',
+ loadingAlbum:'Loading…',loadingPlays:'Loading plays…',loadingStats:'Loading stats…',plays:'plays',scrobbles:'scrobbles',streams:'streams',hListened:'h listened',unknownAlbum:'Unknown album',noAlbum:'No album data',noScrobblesFound:'No scrobbles found',
+ tiLoved:'Loved',tiLovedTitle:'Loved track on Last.fm',tiFirstPrefix:'1st heard:',tiPlayedOnce:'Played 1x',tiPlayedMany:'Played {n}x',tiAlbumPlayed:'Album played {n}x',tiArtistAgo:'Heard artist {t} ago',year:'year',years:'years',month:'month',months:'months',week:'week',weeks:'weeks',
+ verseOfDay:'Verse of the Day',pageAbbr:'p.',
+ lfApiErr:'Last.fm · API error',lfApiHint:'Check Last.fm API settings',lfFailed:'Last.fm · request failed',unavailable:'Temporarily unavailable',sfSetup:'stats.fm · setup needed',sfCfg:'Configure user ID',sfAdd:'Add STATSFM_USER_ID in Vercel',sfApiErr:'stats.fm · API error',albumStats:'Album statistics',noRanking:'No album ranking available',
+ loading:'Loading…',checkingSimkl:'Checking Simkl',watchingNow:'Watching now',lastWatched:'Last watched',nothingYet:'Nothing yet',noHistory:'No watch history',watchHint:'Watch something and it shows up here',apiError:'API error',simklDown:'Simkl unavailable',simklHint:'Check SIMKL_CLIENT_ID / SIMKL_TOKEN in Vercel',
+ playingNow:'Playing now',lastPlayed:'Last played',idle:'Idle',session:'Session',total:'total',recently:'Recently played',noGames:'No recent games',syncHint:'Sync your Playnite library to show play history',
+ ghLatest:'Latest activity',ghProfile:'GitHub profile',justNow:'just now',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'public repositories analyzed',
+ gameJump:"Jump over Taylor's trophy!",gameStart:'Tap, click or press Space to start',gameOver:'Taylor had the trophy.',gameBtn:'KANYE JUMP (TAP / SPACE)',hi:'HI',score:'SCORE',gameFire:'IMMA LET YOU FINISH…'},
+pt:{listening:'Ouvindo',watching:'Assistindo',playing:'Jogando',open:'abrir ↗',onYgp:'no Your Gamer Profile',onGh:'no GitHub',
+ nowListening:'Ouvindo agora',lastTrack:'Última música',noTrack:'Nenhuma música recente',noScrobbles:'Ainda sem scrobbles recentes',lfLoading:'Carregando Last.fm…',lfChecking:'Verificando scrobbles recentes',lfDown:'Last.fm indisponível no momento',retrying:'Tentando de novo automaticamente',
+ lfTotalLabel:'Last.fm · total de scrobbles',lfTrack7d:'Last.fm · top música / semana',lfAlbum7d:'Last.fm · top álbum / semana',lfArtist7d:'Last.fm · top artista / semana',lfTop:'Last.fm · top álbum / 6 meses',lfAlbumAll:'Last.fm · top álbum / total',lfTrackAll:'Last.fm · top música / total',lfArtist1y:'Last.fm · top artista / 1 ano',lfArtistAll:'Last.fm · top artista / total',lfLoved:'Last.fm · faixas favoritas',lovedWord:'favoritas',inProfile:'scrobbles no perfil',lastWeek:'últimos 7 dias',lastYear:'último 1 ano',allTime:'todo o perfil',
+ sfTotalLabel:'stats.fm · total de streams',sfTrack7d:'stats.fm · top música / semana',sfAlbum7d:'stats.fm · top álbum / semana',sfArtist7d:'stats.fm · top artista / semana',sfTop:'stats.fm · top álbum / 4 sem.',sfTrack4w:'stats.fm · top música / 4 sem.',sfArtist4w:'stats.fm · top artista / 4 sem.',sfAlbumAll:'stats.fm · top álbum / total',sfArtistAll:'stats.fm · top artista / total',sfGenre4w:'stats.fm · top gênero / 4 sem.',sfPlaylist4w:'stats.fm · top playlist / 4 sem.',
+ loadingAlbum:'Carregando…',loadingPlays:'Carregando plays…',loadingStats:'Carregando estatísticas…',plays:'plays',scrobbles:'scrobbles',streams:'streams',hListened:'h ouvidas',unknownAlbum:'Álbum desconhecido',noAlbum:'Sem dados de álbum',noScrobblesFound:'Nenhum scrobble encontrado',
+ tiLoved:'Favorita',tiLovedTitle:'Faixa favoritada no Last.fm',tiFirstPrefix:'1ª vez:',tiPlayedOnce:'Tocou 1 vez',tiPlayedMany:'Tocou {n}x',tiAlbumPlayed:'Tocou o álbum {n}x',tiArtistAgo:'Ouviu o artista há {t}',year:'ano',years:'anos',month:'mês',months:'meses',week:'semana',weeks:'semanas',
+ verseOfDay:'Versículo do Dia',pageAbbr:'pág.',
+ lfApiErr:'Last.fm · erro na API',lfApiHint:'Verifique a API do Last.fm',lfFailed:'Last.fm · falha na requisição',unavailable:'Indisponível no momento',sfSetup:'stats.fm · falta configurar',sfCfg:'Configure o ID do usuário',sfAdd:'Adicione STATSFM_USER_ID na Vercel',sfApiErr:'stats.fm · erro na API',albumStats:'Estatísticas do álbum',noRanking:'Sem ranking de álbuns',
+ loading:'Carregando…',checkingSimkl:'Consultando o Simkl',watchingNow:'Assistindo agora',lastWatched:'Último assistido',nothingYet:'Nada ainda',noHistory:'Sem histórico',watchHint:'Assista algo e aparece aqui',apiError:'Erro na API',simklDown:'Simkl indisponível',simklHint:'Verifique SIMKL_CLIENT_ID / SIMKL_TOKEN na Vercel',
+ playingNow:'Jogando agora',lastPlayed:'Último jogado',idle:'Ocioso',session:'Sessão',total:'no total',recently:'Jogado recentemente',noGames:'Nenhum jogo recente',syncHint:'Sincronize sua biblioteca do Playnite para ver o histórico',
+ ghLatest:'Atividade recente',ghProfile:'Perfil do GitHub',justNow:'agora mesmo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositórios públicos analisados',
+ gameJump:'Pule o troféu da Taylor!',gameStart:'Toque, clique ou aperte Espaço para começar',gameOver:'A Taylor ficou com o troféu.',gameBtn:'KANYE PULA (TOQUE / ESPAÇO)',hi:'REC',score:'PONTOS',gameFire:'DEIXA EU TERMINAR…'},
+es:{listening:'Escuchando',watching:'Viendo',playing:'Jugando',open:'abrir ↗',onYgp:'en Your Gamer Profile',onGh:'en GitHub',
+ nowListening:'Escuchando ahora',lastTrack:'Última canción',noTrack:'Sin canciones recientes',noScrobbles:'Aún sin scrobbles recientes',lfLoading:'Cargando Last.fm…',lfChecking:'Revisando scrobbles recientes',lfDown:'Last.fm no disponible por ahora',retrying:'Reintentando automáticamente',
+ lfTotalLabel:'Last.fm · total de scrobbles',lfTrack7d:'Last.fm · top canción / semana',lfAlbum7d:'Last.fm · top álbum / semana',lfArtist7d:'Last.fm · top artista / semana',lfTop:'Last.fm · top álbum / 6 meses',lfAlbumAll:'Last.fm · top álbum / total',lfTrackAll:'Last.fm · top canción / total',lfArtist1y:'Last.fm · top artista / 1 año',lfArtistAll:'Last.fm · top artista / total',lfLoved:'Last.fm · canciones favoritas',lovedWord:'favoritas',inProfile:'scrobbles en el perfil',lastWeek:'últimos 7 días',lastYear:'último año',allTime:'histórico',
+ sfTotalLabel:'stats.fm · total de streams',sfTrack7d:'stats.fm · top canción / semana',sfAlbum7d:'stats.fm · top álbum / semana',sfArtist7d:'stats.fm · top artista / semana',sfTop:'stats.fm · top álbum / 4 sem.',sfTrack4w:'stats.fm · top canción / 4 sem.',sfArtist4w:'stats.fm · top artista / 4 sem.',sfAlbumAll:'stats.fm · top álbum / total',sfArtistAll:'stats.fm · top artista / total',sfGenre4w:'stats.fm · top género / 4 sem.',sfPlaylist4w:'stats.fm · top playlist / 4 sem.',
+ loadingAlbum:'Cargando…',loadingPlays:'Cargando reproducciones…',loadingStats:'Cargando estadísticas…',plays:'plays',scrobbles:'scrobbles',streams:'streams',hListened:'h escuchadas',unknownAlbum:'Álbum desconocido',noAlbum:'Sin datos de álbum',noScrobblesFound:'No se encontraron scrobbles',
+ tiLoved:'Favorita',tiLovedTitle:'Canción favorita en Last.fm',tiFirstPrefix:'1ª vez:',tiPlayedOnce:'Sonó 1 vez',tiPlayedMany:'Sonó {n}x',tiAlbumPlayed:'Sonó el álbum {n}x',tiArtistAgo:'Escuchó al artista hace {t}',year:'año',years:'años',month:'mes',months:'meses',week:'semana',weeks:'semanas',
+ verseOfDay:'Versículo del Día',pageAbbr:'pág.',
+ lfApiErr:'Last.fm · error de API',lfApiHint:'Revisa la API de Last.fm',lfFailed:'Last.fm · falló la solicitud',unavailable:'No disponible por ahora',sfSetup:'stats.fm · falta configurar',sfCfg:'Configura el ID de usuario',sfAdd:'Agrega STATSFM_USER_ID en Vercel',sfApiErr:'stats.fm · error de API',albumStats:'Estadísticas del álbum',noRanking:'Sin ranking de álbumes',
+ loading:'Cargando…',checkingSimkl:'Consultando Simkl',watchingNow:'Viendo ahora',lastWatched:'Último visto',nothingYet:'Nada todavía',noHistory:'Sin historial',watchHint:'Mira algo y aparecerá aquí',apiError:'Error de API',simklDown:'Simkl no disponible',simklHint:'Revisa SIMKL_CLIENT_ID / SIMKL_TOKEN en Vercel',
+ playingNow:'Jugando ahora',lastPlayed:'Último jugado',idle:'Inactivo',session:'Sesión',total:'en total',recently:'Jugado recientemente',noGames:'Sin juegos recientes',syncHint:'Sincroniza tu biblioteca de Playnite para ver el historial',
+ ghLatest:'Actividad reciente',ghProfile:'Perfil de GitHub',justNow:'ahora mismo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositorios públicos analisados',
+ gameJump:'¡Salta el trofeo de Taylor!',gameStart:'Toca, haz clic o pulsa Espacio para empezar',gameOver:'Taylor se quedó con el trofeo.',gameBtn:'KANYE SALTA (TOCA / ESPACIO)',hi:'REC',score:'PONTOS',gameFire:'DÉJAME TERMINAR…'}
+};
+const SUP=['en','pt','es'];
+function detectLang(){
+  const forced=(Q.get('lang')||'').slice(0,2).toLowerCase();if(SUP.includes(forced))return forced;
+  const list=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||'en'];
+  for(const l of list){const c=String(l).slice(0,2).toLowerCase();if(SUP.includes(c))return c}
+  return 'en';
+}
+const LANG=detectLang(),T=k=>I18N[LANG][k]??I18N.en[k]??k;
+document.documentElement.lang=LANG;
+document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=T(el.dataset.i18n)});
+const nf=n=>Number(n||0).toLocaleString(LANG);
+
+const VERSES=[
+  {ref:'Salmos 23:1',p:612,pt:'O Senhor é o meu pastor; nada me faltará.',en:'The Lord is my shepherd; I shall not want.'},
+  {ref:'Provérbios 4:23',p:674,pt:'Guarda o teu coração, porque dele procedem as fontes da vida.',en:'Above all else, guard your heart, for everything you do flows from it.'},
+  {ref:'Filipenses 4:13',p:1158,pt:'Tudo posso naquele que me fortalece.',en:'I can do all things through Christ who strengthens me.'},
+  {ref:'Isaías 41:10',p:742,pt:'Não temas, porque eu sou contigo; eu te fortaleço, e te ajudo.',en:'Fear not, for I am with you; I will strengthen you and help you.'},
+  {ref:'Salmos 119:105',p:658,pt:'Lâmpada para os meus pés é tua palavra e luz, para o meu caminho.',en:'Your word is a lamp to my feet and a light to my path.'},
+  {ref:'Josué 1:9',p:241,pt:'Sê forte e corajoso; o Senhor, teu Deus, é contigo por onde quer que andares.',en:'Be strong and courageous; the Lord your God will be with you wherever you go.'},
+  {ref:'Romanos 8:28',p:1104,pt:'Todas as coisas contribuem juntamente para o bem daqueles que amam a Deus.',en:'In all things God works for the good of those who love him.'},
+  {ref:'Salmos 46:1',p:623,pt:'Deus é o nosso refúgio e fortaleza, socorro bem presente na angústia.',en:'God is our refuge and strength, an ever-present help in trouble.'},
+  {ref:'Mateus 11:28',p:967,pt:'Vinde a mim, todos os que estais cansados e oprimidos, e eu vos aliviarei.',en:'Come to me, all you who are weary and burdened, and I will give you rest.'},
+  {ref:'Provérbios 3:5-6',p:673,pt:'Confia no Senhor de todo o teu coração e não no teu próprio entendimento.',en:'Trust in the Lord with all your heart and lean not on your own understanding.'},
+  {ref:'Jeremias 29:11',p:798,pt:'Eu bem sei os pensamentos que tenho sobre vós, diz o Senhor: pensamentos de paz.',en:'For I know the plans I have for you, declares the Lord, plans for peace.'},
+  {ref:'João 14:27',p:1056,pt:'Deixo-vos a paz, a minha paz vos dou; não se turbe o vosso coração.',en:'Peace I leave with you; my peace I give you. Do not let your hearts be troubled.'},
+  {ref:'Salmos 37:5',p:618,pt:'Entrega o teu caminho ao Senhor; confia nele, e ele tudo fará.',en:'Commit your way to the Lord; trust in him and he will do this.'},
+  {ref:'Lamentações 3:22-23',p:824,pt:'As misericórdias do Senhor não têm fim; renovam-se a cada manhã.',en:'The Lord’s compassions never fail; they are new every morning.'},
+  {ref:'Salmos 91:1-2',p:644,pt:'Aquele que habita no esconderijo do Altíssimo, à sombra do Onipotente descansará.',en:'Whoever dwells in the shelter of the Most High will rest in the shadow of the Almighty.'},
+  {ref:'Isaías 40:31',p:741,pt:'Os que esperam no Senhor renovarão as suas forças e subirão como águias.',en:'Those who hope in the Lord will renew their strength and soar like eagles.'},
+  {ref:'2 Coríntios 5:7',p:1132,pt:'Porque andamos por fé e não por vista.',en:'For we live by faith, not by sight.'},
+  {ref:'Salmos 27:1',p:614,pt:'O Senhor é a minha luz e a minha salvação; a quem temerei?',en:'The Lord is my light and my salvation—whom shall I fear?'},
+  {ref:'Provérbios 16:3',p:684,pt:'Confia ao Senhor as tuas obras, e teus pensamentos serão estabelecidos.',en:'Commit to the Lord whatever you do, and he will establish your plans.'},
+  {ref:'João 8:32',p:1048,pt:'E conhecereis a verdade, e a verdade vos libertará.',en:'Then you will know the truth, and the truth will set you free.'},
+  {ref:'Romanos 12:2',p:1108,pt:'Não vos conformeis com este mundo, mas transformai-vos pelo vosso entendimento.',en:'Do not conform to the world, but be transformed by the renewing of your mind.'},
+  {ref:'Salmos 121:1-2',p:660,pt:'Elevo os meus olhos para os montes; o meu socorro vem do Senhor.',en:'I lift up my eyes to the mountains; my help comes from the Lord.'},
+  {ref:'1 Coríntios 16:14',p:1126,pt:'Todas as vossas coisas sejam feitas com amor.',en:'Do everything in love.'},
+  {ref:'Eclesiastes 3:1',p:701,pt:'Tudo tem o seu tempo determinado debaixo do céu.',en:'There is a time for everything under the heavens.'},
+  {ref:'Salmos 34:8',p:617,pt:'Provai e vede que o Senhor é bom; bem-aventurado o homem que nele confia.',en:'Taste and see that the Lord is good; blessed is the one who takes refuge in him.'},
+  {ref:'Gálatas 6:9',p:1143,pt:'Não nos cansemos de fazer o bem, pois a seu tempo ceifaremos.',en:'Let us not become weary in doing good, for at the proper time we will reap.'},
+  {ref:'Tiago 1:5',p:1192,pt:'Se algum de vós tem falta de sabedoria, peça-a a Deus.',en:'If any of you lacks wisdom, you should ask God, who gives generously.'},
+  {ref:'1 Pedro 5:7',p:1199,pt:'Lançando sobre ele toda a vossa ansiedade, porque ele tem cuidado de vós.',en:'Cast all your anxiety on him because he cares for you.'},
+  {ref:'Hebreus 11:1',p:1185,pt:'A fé é o firme fundamento das coisas que se esperam.',en:'Now faith is confidence in what we hope for and assurance about what we do not see.'},
+  {ref:'Salmos 51:10',p:626,pt:'Cria em mim, ó Deus, um coração puro e renova em mim um espírito reto.',en:'Create in me a pure heart, O God, and renew a steadfast spirit within me.'},
+  {ref:'Miquéias 6:8',p:918,pt:'Pratiques a justiça, ames a benignidade e andes humildemente com o teu Deus.',en:'Act justly, love mercy, and walk humbly with your God.'},
+  {ref:'Efésios 2:8',p:1146,pt:'Porque pela graça sois salvos, por meio da fé; é dom de Deus.',en:'For it is by grace you have been saved, through faith—it is the gift of God.'},
+  {ref:'Salmos 139:14',p:666,pt:'Eu te louvarei, porque de um modo terrível e tão maravilhoso fui formado.',en:'I praise you because I am fearfully and wonderfully made.'},
+  {ref:'Colossenses 3:23',p:1163,pt:'Tudo quanto fizerdes, fazei-o de todo o coração, como ao Senhor.',en:'Whatever you do, work at it with all your heart, as working for the Lord.'},
+  {ref:'2 Timóteo 1:7',p:1174,pt:'Deus não nos deu o espírito de temor, mas de fortaleza, de amor e de moderação.',en:'God gave us a spirit not of fear, but of power, love and self-discipline.'},
+  {ref:'Salmos 16:8',p:608,pt:'Tenho posto o Senhor continuamente diante de mim; nunca vacilarei.',en:'I keep my eyes always on the Lord; I will not be shaken.'},
+  {ref:'João 16:33',p:1058,pt:'No mundo tereis aflições, mas tende bom ânimo; eu venci o mundo.',en:'In this world you will have trouble. But take heart! I have overcome the world.'},
+  {ref:'Habacuque 3:19',p:926,pt:'O Senhor Deus é a minha força e me fará andar sobre as minhas alturas.',en:'The Sovereign Lord is my strength; he enables me to tread on the heights.'}
+];
+function renderDailyVerse(){
+  const now=new Date();
+  const daySeed=Math.floor((Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()))/86400000);
+  const idx=((daySeed*17)+7)%VERSES.length;
+  const v=VERSES[idx];
+  const txt=LANG==='en'?v.en:v.pt;
+  const refTxt=`${v.ref} · ${T('pageAbbr')} ${v.p}`;
+  $('bv-ref').textContent=refTxt;
+  $('bv-text').textContent=`“${txt}”`;
+  $('bible-verse').title=`“${txt}” — ${refTxt}`;
+}
+renderDailyVerse();
+
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+t.dataset.tab));
+  game.active=t.dataset.tab==='game'; if(game.active){SFX.unlock();startLoop()}else{SFX.stopAll()}
+}));
+
+const rtf=(()=>{try{return new Intl.RelativeTimeFormat(LANG,{numeric:'always'})}catch{return null}})();
+function ago(iso){const s=Math.max(0,(Date.now()-new Date(iso))/1e3);
+  if(s<60)return T('justNow');if(!rtf)return Math.floor(s/60)+' min';
+  const m=s/60;if(m<60)return rtf.format(-Math.floor(m),'minute');
+  const h=m/60;if(h<24)return rtf.format(-Math.floor(h),'hour');
+  return rtf.format(-Math.floor(h/24),'day')}
+const mmss=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=String(s%60).padStart(2,'0');return h>0?`${h}:${String(m).padStart(2,'0')}:${sec}`:`${m}:${sec}`};
+const bg=(el,url)=>{if(url){el.style.backgroundImage=`url("${url}")`;el.textContent=''}};
+
+const BG={a:true,cur:null,music:null,movie:null,game:null,idx:0};
+function setBg(url){
+  if(!url||url===BG.cur||document.body.classList.contains('no-bg'))return;
+  const img=new Image();
+  img.onload=()=>{
+    const next=$(BG.a?'bg2':'bg1'),prev=$(BG.a?'bg1':'bg2');
+    next.style.backgroundImage=`url("${url}")`;next.classList.add('on');prev.classList.remove('on');
+    BG.a=!BG.a;BG.cur=url};
+  img.src=url;
+}
+function pickBg(){
+  if(BG.music)return setBg(BG.music);
+  const list=[BG.movie,BG.game].filter(Boolean);
+  if(list.length)setBg(list[BG.idx%list.length]);
+}
+setInterval(()=>{if(!BG.music&&!document.hidden){BG.idx++;pickBg()}},14e3);
+
+const NP_URL='https://widget.nowplaying.site/NCHtxlyDh553sEwM';
+const NP={lastLive:0,lf:null,key:'',timer:0,off:false,mode:(Q.get('player')||'auto').toLowerCase()};
+const musicLive=()=>Date.now()-NP.lastLive<45e3;
+const npNum=k=>{const v=parseFloat(Q.get(k));return isNaN(v)?null:v};
+function swapNp(){
+  if(NP.off)return;
+  const art=$('track-art'),olds=[...art.querySelectorAll('.ta-np')];
+  const n=document.createElement('iframe');
+  n.className='ta-np';n.title='NowPlaying.site (Canvas)';n.tabIndex=-1;n.setAttribute('scrolling','no');n.setAttribute('allow','autoplay');
+  n.onload=()=>setTimeout(()=>{n.style.opacity='1';setTimeout(()=>olds.forEach(o=>o.remove()),700)},1200);
+  n.src=NP_URL;art.append(n);
+}
+(function(){
+  const root=document.documentElement.style;
+  if(NP.mode==='lastfm'){NP.off=true;return}
+  if(NP.mode==='np'){NP.off=true;const e=document.createElement('iframe');e.src=NP_URL;e.title='NowPlaying.site';e.setAttribute('scrolling','no');$('pf').classList.add('embed');$('pf').append(e);return}
+  const ax=npNum('npx'),ay=npNum('npy'),w=npNum('npw'),h=npNum('nph'),force=npNum('np'),npr=npNum('npr');
+  if(ax!=null)root.setProperty('--np-ax',ax+'px');if(ay!=null)root.setProperty('--np-ay',ay+'px');
+  if(w!=null)root.setProperty('--np-w',w+'px');if(h!=null)root.setProperty('--np-h',h+'px');
+  const fit=()=>{const a=$('track-art').clientWidth||114;root.setProperty('--np-s',force||(a/140*1.1))};
+  fit();addEventListener('resize',fit);
+  if(npr&&npr>=4)setInterval(()=>{if(musicLive()&&!document.hidden)swapNp()},npr*1000);
+})();
+
+function fmtDateShort(iso){
+  if(!iso)return '';
+  const d=new Date(iso);
+  if(isNaN(d.getTime()))return '';
+  return d.toLocaleDateString(LANG,{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function fmtArtistSpan(iso){
+  if(!iso)return '';
+  const days=Math.max(1,(Date.now()-new Date(iso).getTime())/86400000);
+  if(days>=365){const y=Math.floor(days/365);return `${y} ${y===1?T('year'):T('years')}`}
+  if(days>=30){const m=Math.floor(days/30);return `${m} ${m===1?T('month'):T('months')}`}
+  const w=Math.max(1,Math.floor(days/7));
+  return `${w} ${w===1?T('week'):T('weeks')}`;
+}
+function renderTrackInsights(ti){
+  const box=$('track-insights');
+  if(!musicLive()||!ti||(!ti.firstListenAt&&!ti.trackPlays&&!ti.loved&&!ti.artistFirstListenAt)){box.hidden=true;box.innerHTML='';return}
+  box.innerHTML='';
+  const urls=ti.urls||{};
+  const addPill=(html,href,cls='',title='')=>{
+    const a=document.createElement(href?'a':'span');
+    a.className='ti-pill'+(cls?' '+cls:'');
+    if(href){a.href=href;a.target='_blank';a.rel='noopener'}
+    if(title)a.title=title;
+    a.innerHTML=html;
+    box.append(a);
+  };
+  if(ti.loved){
+    addPill(`<svg viewBox="0 0 24 24" class="ti-heart" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span>${T('tiLoved')}</span>`,urls.loved,'ti-loved',T('tiLovedTitle'));
+  }
+  if(ti.firstListenAt){
+    addPill(`<span>${T('tiFirstPrefix')} <b>${fmtDateShort(ti.firstListenAt)}</b></span>`,urls.track,'',new Date(ti.firstListenAt).toLocaleString(LANG));
+  }
+  if(ti.trackPlays>0){
+    const playTxt=ti.trackPlays===1?T('tiPlayedOnce'):T('tiPlayedMany').replace('{n}',`<b>${nf(ti.trackPlays)}</b>`);
+    addPill(`<svg viewBox="0 0 16 16" class="ti-play" aria-hidden="true"><path d="M4 2.5v11l9-5.5-9-5.5z"/></svg><span>${playTxt}</span>`,urls.track);
+  }
+  if(ti.album&&ti.albumPlays>20){
+    const albTxt=T('tiAlbumPlayed').replace('{a}',ti.album).replace('{n}',`<b>${nf(ti.albumPlays)}</b>`);
+    addPill(`<span>💿 ${albTxt}</span>`,urls.album,'ti-album',`${ti.album} (${nf(ti.albumPlays)} plays)`);
+  }
+  if(ti.artistFirstListenAt){
+    const spanTxt=fmtArtistSpan(ti.artistFirstListenAt);
+    const artTxt=T('tiArtistAgo').replace('{t}',`<b>${spanTxt}</b>`);
+    addPill(`<span>${artTxt}</span>`,urls.artist,'',new Date(ti.artistFirstListenAt).toLocaleDateString(LANG));
+  }
+  box.hidden=!box.children.length;
+}
+
+function renderTrack(){
+  const lf=NP.lf,live=musicLive();
+  const track=lf?(live?(lf.current||lf.lastTrack):(lf.lastTrack||lf.current)):null;
+  $('track-view').classList.toggle('live',live);
+  $('track-state-t').textContent=live?T('nowListening'):T('lastTrack');
+  $('track-title').textContent=lf?(track?.title||T('noTrack')):T('lfLoading');
+  $('track-artist').textContent=lf?(track?.artist||T('noScrobbles')):T('lfChecking');
+  const cov=$('ta-cover');cov.style.backgroundImage='';cov.textContent='♪';bg(cov,track?.image);
+  const key=live&&track?`${track.title}|${track.artist}`:'';
+  if(key!==NP.key){
+    NP.key=key;clearTimeout(NP.timer);
+    if(key){swapNp();NP.timer=setTimeout(()=>{if(NP.key===key&&musicLive())swapNp()},9000)}
+  }
+  if(live&&lf?.trackInfo)renderTrackInsights(lf.trackInfo);
+  else{const b=$('track-insights');b.hidden=true;b.innerHTML=''}
+  BG.music=live&&track?.image?track.image:null;pickBg();
+}
+function renderLastfmPlayback(lf){
+  if(lf?.error)return;
+  if(lf?.live)NP.lastLive=Date.now();
+  if(NP.lf&&!lf.trackInfo&&NP.lf.trackInfo)lf.trackInfo=NP.lf.trackInfo;
+  NP.lf=lf;renderTrack();
+}
+setInterval(renderTrack,5e3);
+
+function setAlbumImage(id,url,round=false){
+  const img=$(id);
+  img.classList.toggle('round',!!round);
+  if(url){img.onerror=()=>{img.onerror=null;img.hidden=true};img.src=url;img.hidden=false}
+  else{img.removeAttribute('src');img.hidden=true}
+}
+
+const ROT={
+  lf:{slides:[],idx:0,hover:false,timer:0},
+  sf:{slides:[],idx:0,hover:false,timer:0}
+};
+function formatLfSlide(s){
+  switch(s.kind){
+    case 'total':
+      return {label:T('lfTotalLabel'),value:`${nf(s.plays)} ${T('scrobbles')}`,meta:[s.title,s.subtitle].filter(Boolean).join(' · '),image:s.image,url:s.url,round:true};
+    case 'track7d':
+      return {label:T('lfTrack7d'),value:s.title||'—',meta:[s.artist,s.plays!=null?`${nf(s.plays)} ${T('scrobbles')}`:null].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    case 'album7d':
+      return {label:T('lfAlbum7d'),value:s.title||T('unknownAlbum'),meta:[s.artist,s.plays!=null?`${nf(s.plays)} ${T('scrobbles')}`:null].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    case 'artist7d':
+      return {label:T('lfArtist7d'),value:s.title||'—',meta:[s.plays!=null?`${nf(s.plays)} ${T('scrobbles')}`:null,T('lastWeek')].filter(Boolean).join(' · '),image:s.image,url:s.url,round:true};
+    case 'album6m':
+      return {label:T('lfTop'),value:s.title||T('unknownAlbum'),meta:[s.artist,s.plays!=null?`${nf(s.plays)} ${T('scrobbles')}`:null].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    case 'albumAll':
+      return {label:T('lfAlbumAll'),value:s.title||T('unknownAlbum'),meta:[s.artist,s.plays!=null?`${nf(s.plays)} ${T('scrobbles')}`:null].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    case 'trackAll':
+      return {label:T('lfTrackAll'),value:s.title||'—',meta:[s.artist,s.plays!=null?`${nf(s.plays)} ${T('scrobbles')}`:null].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    case 'artist1y':
+      return {label:T('lfArtist1y'),value:s.title||'—',meta:[s.plays!=null?`${nf(s.plays)} ${T('scrobbles')}`:null,T('lastYear')].filter(Boolean).join(' · '),image:s.image,url:s.url,round:true};
+    case 'artistAll':
+      return {label:T('lfArtistAll'),value:s.title||'—',meta:[s.plays!=null?`${nf(s.plays)} ${T('scrobbles')}`:null,T('allTime')].filter(Boolean).join(' · '),image:s.image,url:s.url,round:true};
+    case 'loved':
+      return {label:T('lfLoved'),value:`♥ ${nf(s.lovedCount)} ${T('lovedWord')}`,meta:`${nf(s.plays)} ${T('inProfile')}`,image:s.image,url:s.url,round:false};
+    default:
+      return {label:T('lfTop'),value:s.title||'—',meta:s.artist||'',image:s.image,url:s.url,round:false};
+  }
+}
+function formatSfSlide(s){
+  const hrs=s.durationMs?`${(s.durationMs/3600000).toFixed(1)} ${T('hListened')}`:null;
+  switch(s.kind){
+    case 'total':
+      return {label:T('sfTotalLabel'),value:`${nf(s.streams)} ${T('streams')}`,meta:[hrs,s.artist].filter(Boolean).join(' · '),image:s.image,url:s.url,round:true};
+    case 'track7d':
+      return {label:T('sfTrack7d'),value:s.title||'—',meta:[s.artist,s.streams!=null?`${nf(s.streams)} ${T('plays')}`:null,hrs].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    case 'album7d':
+      return {label:T('sfAlbum7d'),value:s.title||T('unknownAlbum'),meta:[s.artist,s.streams!=null?`${nf(s.streams)} ${T('plays')}`:null,hrs].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    case 'artist7d':
+      return {label:T('sfArtist7d'),value:s.title||'—',meta:[s.streams!=null?`${nf(s.streams)} ${T('plays')}`:null,hrs,s.artist].filter(Boolean).join(' · '),image:s.image,url:s.url,round:true};
+    case 'album':
+      return {label:T('sfTop'),value:s.title||T('unknownAlbum'),meta:[s.artist,s.streams!=null?`${nf(s.streams)} ${T('plays')}`:null,hrs].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    case 'track':
+      return {label:T('sfTrack4w'),value:s.title||'—',meta:[s.artist,s.streams!=null?`${nf(s.streams)} ${T('plays')}`:null,hrs].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    case 'artist':
+      return {label:T('sfArtist4w'),value:s.title||'—',meta:[s.streams!=null?`${nf(s.streams)} ${T('plays')}`:null,hrs,s.artist].filter(Boolean).join(' · '),image:s.image,url:s.url,round:true};
+    case 'albumAll':
+      return {label:T('sfAlbumAll'),value:s.title||T('unknownAlbum'),meta:[s.artist,s.streams!=null?`${nf(s.streams)} ${T('plays')}`:null,hrs].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    case 'artistAll':
+      return {label:T('sfArtistAll'),value:s.title||'—',meta:[s.streams!=null?`${nf(s.streams)} ${T('plays')}`:null,hrs,s.artist].filter(Boolean).join(' · '),image:s.image,url:s.url,round:true};
+    case 'genre':
+      return {label:T('sfGenre4w'),value:s.title||'—',meta:[s.streams!=null?`${nf(s.streams)} ${T('plays')}`:null,s.artist].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    case 'playlist':
+      return {label:T('sfPlaylist4w'),value:s.title||'—',meta:[s.streams!=null?`${nf(s.streams)} ${T('plays')}`:null,'Spotify'].filter(Boolean).join(' · '),image:s.image,url:s.url,round:false};
+    default:
+      return {label:T('sfTop'),value:s.title||'—',meta:s.artist||'',image:s.image,url:s.url,round:false};
+  }
+}
+function applySlide(prefix,animate=true){
+  const st=ROT[prefix];
+  if(!st.slides.length)return;
+  const s=st.slides[st.idx%st.slides.length];
+  const chip=$(prefix+'-chip'),dots=$(prefix+'-dots');
+  const updateDom=()=>{
+    $(prefix+'-label').textContent=s.label;
+    $(prefix+'-label').title=s.label;
+    $(prefix+'-value').textContent=s.value;
+    $(prefix+'-value').title=`${s.value} — ${s.meta||''}`;
+    $(prefix+'-meta').textContent=s.meta;
+    if(s.url)chip.href=s.url;
+    setAlbumImage(prefix+'-image',s.image,s.round);
+    [...dots.children].forEach((d,i)=>d.classList.toggle('on',i===(st.idx%st.slides.length)));
+  };
+  if(animate){
+    chip.classList.add('swapping');
+    setTimeout(()=>{updateDom();chip.classList.remove('swapping')},170);
+  }else updateDom();
+}
+function setupRotator(prefix,slides,delayMs){
+  const st=ROT[prefix];
+  st.slides=slides;
+  if(st.idx>=slides.length)st.idx=0;
+  const dots=$(prefix+'-dots');
+  dots.innerHTML='';
+  if(slides.length>1){
+    slides.forEach((_,i)=>{
+      const b=document.createElement('button');
+      b.type='button';b.className='chip-dot'+(i===st.idx?' on':'');
+      b.setAttribute('aria-label',`Slide ${i+1}`);
+      b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();st.idx=i;applySlide(prefix,true)});
+      dots.append(b);
+    });
+  }
+  applySlide(prefix,false);
+  clearInterval(st.timer);
+  if(slides.length>1){
+    setTimeout(()=>{
+      clearInterval(st.timer);
+      st.timer=setInterval(()=>{if(!st.hover&&!document.hidden){st.idx=(st.idx+1)%st.slides.length;applySlide(prefix,true)}},5500);
+    },delayMs);
+  }
+}
+['lf','sf'].forEach(p=>{
+  const chip=$(p+'-chip');
+  chip.addEventListener('mouseenter',()=>{ROT[p].hover=true});
+  chip.addEventListener('mouseleave',()=>{ROT[p].hover=false});
+});
+
+function initTexts(){
+  $('lf-label').textContent=T('lfTop');$('lf-value').textContent=T('loadingAlbum');$('lf-meta').textContent=T('loadingPlays');
+  $('sf-label').textContent=T('sfTop');$('sf-value').textContent=T('loadingAlbum');$('sf-meta').textContent=T('loadingStats');
+  $('w-pill').textContent=T('loading');$('w-meta').textContent=T('checkingSimkl');
+  $('g-pill').textContent=T('loading');
+  renderTrack();
+}
+function renderMusic(data){
+  const lf=data?.lastfm||{},sf=data?.statsfm||{};
+  if(lf.error){
+    $('lf-label').textContent=T('lfApiErr');$('lf-value').textContent=String(lf.error).slice(0,38);$('lf-meta').textContent=T('lfApiHint');
+  }else if(Array.isArray(lf.slides)&&lf.slides.length){
+    setupRotator('lf',lf.slides.map(formatLfSlide),0);
+  }else if(lf.album){
+    setupRotator('lf',[formatLfSlide({kind:'album6m',...lf.album})],0);
+  }else{
+    $('lf-value').textContent=T('noAlbum');$('lf-meta').textContent=T('noScrobblesFound');
+  }
+  if(sf.error||!sf.configured){
+    $('sf-label').textContent=sf.error?T('sfApiErr'):T('sfSetup');$('sf-value').textContent=sf.error?String(sf.error).slice(0,38):T('sfCfg');$('sf-meta').textContent=sf.error||T('sfAdd');
+  }else if(Array.isArray(sf.slides)&&sf.slides.length){
+    setupRotator('sf',sf.slides.map(formatSfSlide),2750);
+  }else if(sf.album){
+    setupRotator('sf',[formatSfSlide({kind:'album',...sf.album})],2750);
+  }else{
+    $('sf-value').textContent=T('noAlbum');$('sf-meta').textContent=T('noRanking');
+  }
+  renderLastfmPlayback(lf);
+}
+async function loadMusic(){
+  try{
+    if(CFG.demo){
+      renderMusic({
+        lastfm:{
+          live:true,
+          current:{title:'Brace Face',artist:'Rod Wave',album:'Ghetto Gospel',image:null},
+          lastTrack:{title:'Brace Face',artist:'Rod Wave',album:'Ghetto Gospel',image:null},
+          trackInfo:{title:'Brace Face',artist:'Rod Wave',album:'Ghetto Gospel',loved:true,firstListenAt:'2023-10-14T18:20:00.000Z',trackPlays:18,albumPlays:64,showAlbum:true,artistFirstListenAt:'2019-11-22T11:01:58.000Z',urls:{}},
+          slides:[
+            {kind:'total',title:'W ∆ G N E R',subtitle:'@WagnerSilva17',plays:194520,image:'assets/logo.webp',url:'https://www.last.fm/user/WagnerSilva17'},
+            {kind:'track7d',title:'No More',artist:'Metro Boomin',plays:14,image:'assets/logo.webp',url:'https://www.last.fm/user/WagnerSilva17/library/tracks?date_preset=LAST_7_DAYS'},
+            {kind:'album7d',title:'Not All Heroes Wear Capes',artist:'Metro Boomin',plays:28,image:'assets/logo.webp',url:'https://www.last.fm/user/WagnerSilva17/library/albums?date_preset=LAST_7_DAYS'},
+            {kind:'artist7d',title:'Metro Boomin',plays:42,image:'assets/logo.webp',url:'https://www.last.fm/user/WagnerSilva17/library/artists?date_preset=LAST_7_DAYS'},
+            {kind:'album6m',title:'ICEMAN',artist:'Drake',plays:307,image:'assets/logo.webp',url:'https://www.last.fm/user/WagnerSilva17/library/albums?date_preset=LAST_180_DAYS'},
+            {kind:'albumAll',title:'Take Care',artist:'Drake',plays:1420,image:'assets/logo.webp',url:'https://www.last.fm/user/WagnerSilva17/library/albums?date_preset=ALL'},
+            {kind:'trackAll',title:'Brace Face',artist:'Rod Wave',plays:142,image:'assets/logo.webp',url:'https://www.last.fm/user/WagnerSilva17/library/tracks?date_preset=ALL'},
+            {kind:'artist1y',title:'Drake',plays:2450,image:'assets/logo.webp',url:'https://www.last.fm/user/WagnerSilva17/library/artists?date_preset=LAST_365_DAYS'},
+            {kind:'artistAll',title:'Drake',plays:14200,image:'assets/logo.webp',url:'https://www.last.fm/user/WagnerSilva17/library/artists?date_preset=ALL'},
+            {kind:'loved',lovedCount:312,plays:194520,image:'assets/logo.webp',url:'https://www.last.fm/user/WagnerSilva17/loved'}
+          ]
+        },
+        statsfm:{
+          configured:true,
+          slides:[
+            {kind:'total',title:'W ∆ G N E R',artist:'@uwaazy',streams:192902,durationMs:35432209722,image:'assets/logo.webp',url:'https://stats.fm/uwaazy'},
+            {kind:'track7d',title:'No More',artist:'Metro Boomin',streams:6,durationMs:1420000,image:'assets/logo.webp',url:'https://stats.fm/uwaazy/tracks'},
+            {kind:'album7d',title:'Without Warning',artist:'21 Savage, Offset, Metro Boomin',streams:12,durationMs:2610000,image:'assets/logo.webp',url:'https://stats.fm/uwaazy/albums'},
+            {kind:'artist7d',title:'Metro Boomin',artist:'Hip-Hop / Rap',streams:24,durationMs:5120000,image:'assets/logo.webp',url:'https://stats.fm/uwaazy/artists'},
+            {kind:'album',title:'LIVE.LOVE.A$AP',artist:'A$AP Rocky',streams:44,durationMs:8623517,image:'assets/logo.webp',url:'https://stats.fm/uwaazy/albums?range=weeks'},
+            {kind:'track',title:'Desculpa Mãe',artist:'Facção Central',streams:5,durationMs:1769069,image:'assets/logo.webp',url:'https://stats.fm/uwaazy/tracks?range=weeks'},
+            {kind:'artist',title:'Drake',artist:'Hip-Hop / Rap',streams:83,durationMs:18638720,image:'assets/logo.webp',url:'https://stats.fm/uwaazy/artists?range=weeks'},
+            {kind:'albumAll',title:'Take Care',artist:'Drake',streams:1480,durationMs:312000000,image:'assets/logo.webp',url:'https://stats.fm/uwaazy/albums?range=lifetime'},
+            {kind:'artistAll',title:'Drake',artist:'Hip-Hop / Rap',streams:14520,durationMs:2940000000,image:'assets/logo.webp',url:'https://stats.fm/uwaazy/artists?range=lifetime'},
+            {kind:'genre',title:'Hip-Hop / Rap',artist:'Drake, A$AP Rocky',streams:1724,durationMs:354521533,image:'assets/logo.webp',url:'https://stats.fm/uwaazy/genres?range=weeks'},
+            {kind:'playlist',title:'UNDISCLOSED.🤘🏾',artist:'Spotify',streams:113,image:'assets/logo.webp',url:'https://stats.fm/uwaazy/streams'}
+          ]
+        }
+      });
+      return;
+    }
+    const r=await fetch('/api/music',{cache:'no-store'});if(!r.ok)throw new Error(T('unavailable'));renderMusic(await r.json());
+  }catch(e){
+    $('lf-label').textContent=T('lfFailed');$('lf-value').textContent=e.message||T('unavailable');$('lf-meta').textContent='';
+    $('sf-label').textContent='stats.fm';$('sf-value').textContent=T('unavailable');$('sf-meta').textContent='';
+    if(!NP.lf){$('track-title').textContent=T('lfDown');$('track-artist').textContent=T('retrying')}
+  }
+}
+async function refreshLastfmPlayback(){
+  if(CFG.demo)return;
+  try{const r=await fetch('/api/music?recent=1',{cache:'no-store'});if(!r.ok)return;const data=await r.json();renderLastfmPlayback(data?.lastfm||{})}
+  catch{}
+}
+
+const DEMO_W={live:false,title:'Dragon Ball Super: Beerus',type:'anime',episode:'S01E04',episodeTitle:'The God of Saiyans',watchedAt:new Date(Date.now()-4*36e5).toISOString(),runtimeMin:25,poster:null,url:'https://simkl.com/8094166/dashboard/'};
+let tick;
+function renderWatch(w){
+  clearInterval(tick);const pill=$('w-pill'),bar=$('w-bar');
+  const poster=$('w-poster');poster.style.backgroundImage='';poster.textContent='▶';
+  if(!w||!w.title){pill.textContent=T('nothingYet');pill.className='pill';bar.hidden=true;$('w-title').textContent=T('noHistory');$('w-meta').textContent=T('watchHint');return}
+  const loc=(w.i18n&&w.i18n[LANG])||{};
+  const wTitle=loc.title||w.title;
+  const wEpTitle=loc.episodeTitle||w.episodeTitle;
+  const wPoster=loc.poster||w.poster;
+  $('w-title').textContent=wTitle;bg(poster,wPoster);if(w.url)$('watch').href=w.url;
+  if(wPoster){BG.movie=wPoster;pickBg()}
+  const epLabel=[w.episode,wEpTitle].filter(Boolean).join(' · ');
+  const ep=epLabel?epLabel+' · ':'';
+  const progress=Number(w.progress),hasProgress=w.progress!=null&&Number.isFinite(progress)&&progress>=0;
+  if(w.live){
+    pill.textContent=T('watchingNow');pill.className='pill live';
+    const total=Number(w.durationSec)>0?Number(w.durationSec):(w.runtimeMin?w.runtimeMin*60:0),t0=Date.now();
+    const baseEl=Number(w.elapsedSec)>0?Number(w.elapsedSec):(w.watchedAt?Math.max(0,(t0-new Date(w.watchedAt))/1e3):(hasProgress&&total?progress/100*total:0));
+    bar.hidden=!total;
+    const up=()=>{
+      const since=(Date.now()-t0)/1e3;
+      const el=baseEl+since;
+      $('w-meta').textContent=ep+mmss(Math.min(el,total||el))+(total?' / '+mmss(total):'');
+      if(total)bar.firstElementChild.style.width=Math.min(100,el/total*100)+'%'};
+    up();tick=setInterval(up,1000);
+  }else{
+    pill.textContent=T('lastWatched');pill.className='pill';bar.hidden=true;
+    $('w-meta').textContent=ep+(w.watchedAt?ago(w.watchedAt):'');
+  }
+}
+let watchShown=false;
+async function fetchLocalSimkl(){
+  try{
+    const r=await fetch(`${CFG.localSimkl}?lang=${encodeURIComponent(LANG)}`,{cache:'no-store',signal:AbortSignal.timeout(1400)});
+    if(!r.ok)return null;
+    const d=await r.json();
+    return d&&d.live&&d.title?d:null;
+  }catch{return null}
+}
+async function loadWatch(){
+  try{if(CFG.demo){renderWatch(DEMO_W);return}
+    const [remoteRes,localLive]=await Promise.allSettled([
+      fetch(`${CFG.simklApi}?lang=${encodeURIComponent(LANG)}`,{cache:'no-store'}).then(async r=>({ok:r.ok,status:r.status,data:await r.json()})),
+      fetchLocalSimkl()
+    ]);
+    const localData=localLive.status==='fulfilled'?localLive.value:null;
+    if(localData&&localData.live){
+      renderWatch(localData);watchShown=true;
+      return;
+    }
+    if(remoteRes.status!=='fulfilled')throw new Error(T('simklDown'));
+    const {ok,status,data}=remoteRes.value;
+    if(!ok||data?.error)throw new Error(data?.error||`Simkl HTTP ${status}`);
+    renderWatch(data);watchShown=true;if(data&&data.title&&!data.stale){try{localStorage.setItem('lastWatch',JSON.stringify(data))}catch{}}
+  }catch(e){
+    if(watchShown)return;
+    try{const c=JSON.parse(localStorage.getItem('lastWatch')||'null');if(c&&c.title){c.live=false;renderWatch(c);watchShown=true;return}}catch{}
+    renderWatch(null);$('w-pill').textContent=T('apiError');$('w-title').textContent=T('simklDown');$('w-meta').textContent=e.message||T('simklHint');
+  }
+}
+
+const DEMO_G={now:null,recent:[{name:'Assetto Corsa Competizione',cover:null,endedAt:new Date(Date.now()-21*6e4).toISOString(),hours:393.6},{name:'Elden Ring',endedAt:new Date(Date.now()-30*36e5).toISOString(),hours:212},{name:'Hollow Knight',endedAt:new Date(Date.now()-96*36e5).toISOString(),hours:64.2}]};
+let gtick;
+function renderGames(d){
+  clearInterval(gtick);const pill=$('g-pill'),more=$('g-more');more.innerHTML='';
+  const list=((d&&d.recent)||[]).slice();let main=null;
+  if(d&&d.now){main=d.now;pill.textContent=T('playingNow');pill.className='pill live';
+    const up=()=>{$('g-meta').textContent=T('session')+' '+mmss((Date.now()-new Date(main.startedAt))/1e3)};up();gtick=setInterval(up,1000)}
+  else if(list[0]){main=list.shift();pill.textContent=T('lastPlayed');pill.className='pill';
+    const playedAt=main.endedAt||main.playedAt;
+    $('g-meta').textContent=[playedAt?ago(playedAt):T('recently'),main.hours&&`${nf(main.hours)} h ${T('total')}`].filter(Boolean).join(' · ')}
+  if(!main){pill.textContent=T('idle');pill.className='pill';$('g-title').textContent=T('noGames');$('g-meta').textContent=T('syncHint');$('g-poster').style.backgroundImage='';$('g-poster').textContent='🎮';return}
+  $('g-title').textContent=main.name;$('g-poster').style.backgroundImage='';$('g-poster').textContent='🎮';bg($('g-poster'),main.cover);
+  if(main.cover){BG.game=main.cover;pickBg()}
+  list.slice(0,2).forEach(x=>{const e=document.createElement('div');e.className='mini';
+    const p=document.createElement('div');p.className='poster';p.textContent='🎮';bg(p,x.cover);
+    const n=document.createElement('div');n.textContent=x.name;const t=document.createElement('span');t.textContent=x.endedAt?ago(x.endedAt):'';
+    e.append(p,n,t);more.append(e)});
+}
+async function loadGames(){
+  try{if(CFG.demo){renderGames(DEMO_G);return}
+    const r=await fetch('/api/activity');if(!r.ok)throw 0;renderGames(await r.json())
+  }catch(e){renderGames(null)}
+}
+
+const LANG_META={
+  'C#':{icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/csharp/csharp-original.svg',mode:'sys'},
+  'JavaScript':{icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg',mode:'web'},
+  'Python':{icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg',mode:'sys'},
+  'TypeScript':{icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg',mode:'web'},
+  'PowerShell':{icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/powershell/powershell-original.svg',mode:'sys'},
+  'HTML':{icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg',mode:'web'},
+  'CSS':{icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg',mode:'web'},
+  'Lua':{icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/lua/lua-original.svg',mode:'sys'},
+  'Batchfile':{name:'Batch / CLI',icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/windows11/windows11-original.svg',mode:'sys'},
+  'C++':{icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg',mode:'sys'},
+  'Rust':{icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/rust/rust-original.svg',mode:'sys'}
+};
+const STATIC_STACKS={
+  platforms:[
+    {name:'Node.js',icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nodejs/nodejs-original.svg',mode:'web',url:'https://github.com/uWaazy/uWaazy'},
+    {name:'.NET',icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/dotnetcore/dotnetcore-original.svg',mode:'sys',url:'https://github.com/uWaazy?tab=repositories&language=c%23'},
+    {name:'Playnite SDK',icon:'https://cdn.simpleicons.org/playstation/8b5cf6',mode:'sys',url:'https://github.com/uWaazy/ygp-playtime-sync'},
+    {name:'Spicetify',icon:'https://cdn.simpleicons.org/spotify/1ED760',mode:'web',url:'https://github.com/uWaazy/on-this-day'}
+  ],
+  data:[
+    {name:'Redis',icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/redis/redis-original.svg',mode:'web',url:'https://github.com/uWaazy/uWaazy'},
+    {name:'JSON / REST',icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/json/json-original.svg',mode:'web',url:'https://github.com/uWaazy/uWaazy'}
+  ],
+  tools:[
+    {name:'Git',icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg',mode:'sys',url:'https://github.com/uWaazy'},
+    {name:'Vercel',icon:'https://cdn.simpleicons.org/vercel/ffffff',mode:'web',url:'https://uwaazy.vercel.app'},
+    {name:'VS Code',icon:'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vscode/vscode-original.svg',mode:'sys',url:'https://github.com/uWaazy'}
+  ]
+};
+const DEFAULT_LANGS=[
+  {lang:'C#',bytes:473272},
+  {lang:'JavaScript',bytes:195231},
+  {lang:'Python',bytes:130677},
+  {lang:'HTML',bytes:52061},
+  {lang:'CSS',bytes:44839},
+  {lang:'PowerShell',bytes:21844},
+  {lang:'Lua',bytes:8400}
+];
+
+function createStackNode(item){
+  const a=document.createElement('a');
+  a.className='stack-item';
+  a.dataset.mode=item.mode||'all';
+  a.href=item.url||`https://github.com/${CFG.ghUser}?tab=repositories`;
+  a.target='_blank';a.rel='noopener';
+  if(item.title)a.title=item.title;
+  const img=document.createElement('img');
+  img.src=item.icon;img.alt='';
+  const span=document.createElement('span');
+  span.textContent=item.name;
+  a.append(img,span);
+  if(item.pct){
+    const sub=document.createElement('small');
+    sub.className='stack-pct mono';
+    sub.textContent=item.pct;
+    a.append(sub);
+  }
+  return a;
+}
+function renderStacks(langList,repoCount){
+  const langBox=$('st-langs');langBox.innerHTML='';
+  const totalBytes=langList.reduce((s,x)=>s+(x.bytes||0),0)||1;
+  langList.forEach(x=>{
+    const meta=LANG_META[x.lang]||{icon:'https://cdn.simpleicons.org/github/e8ecf5',mode:'web'};
+    const pct=Math.max(1,Math.round((x.bytes/totalBytes)*100));
+    langBox.append(createStackNode({
+      name:meta.name||x.lang,
+      icon:meta.icon,
+      mode:meta.mode,
+      pct:`${pct}%`,
+      title:`${meta.name||x.lang} · ${pct}%`,
+      url:`https://github.com/${CFG.ghUser}?tab=repositories&language=${encodeURIComponent(x.lang.toLowerCase())}`
+    }));
+  });
+  const fillCat=(id,items)=>{const el=$(id);el.innerHTML='';items.forEach(it=>el.append(createStackNode(it)))};
+  fillCat('st-platforms',STATIC_STACKS.platforms);
+  fillCat('st-data',STATIC_STACKS.data);
+  fillCat('st-tools',STATIC_STACKS.tools);
+  $('stacks-repo-note').textContent=repoCount?`github.com/${CFG.ghUser} · ${repoCount} ${T('publicRepos')}`:`github.com/${CFG.ghUser}`;
+}
+
+$('gh-stack-btn').addEventListener('click',()=>{
+  const card=$('stacks-card'),btn=$('gh-stack-btn');
+  const open=!card.hidden;
+  card.hidden=open;
+  btn.setAttribute('aria-expanded',String(!open));
+});
+document.querySelectorAll('.stack-mode').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const mode=btn.dataset.mode;
+    document.querySelectorAll('.stack-mode').forEach(b=>b.classList.toggle('on',b===btn));
+    document.querySelectorAll('.stack-item').forEach(it=>{
+      it.classList.toggle('dim',mode!=='all'&&it.dataset.mode!==mode);
+    });
+  });
+});
+
+async function loadGithubStacks(){
+  renderStacks(DEFAULT_LANGS,6);
+  let cached=null;
+  try{cached=JSON.parse(localStorage.getItem('gh-stacks-v1')||'null')}catch{}
+  if(cached&&Date.now()-cached.at<30*60e3&&Array.isArray(cached.langs)&&cached.langs.length){
+    renderStacks(cached.langs,cached.repos);
+    return;
+  }
+  try{
+    const r=await fetch(`https://api.github.com/users/${CFG.ghUser}/repos?per_page=100&sort=updated`);
+    const repos=await r.json();
+    if(!Array.isArray(repos)||!repos.length)return;
+    const own=repos.filter(x=>!x.fork);
+    const totals=new Map([['HTML',52061],['JavaScript',40000]]);
+    await Promise.all(own.slice(0,12).map(async repo=>{
+      try{
+        const lr=await fetch(repo.languages_url);
+        if(!lr.ok)return;
+        const obj=await lr.json();
+        for(const [k,v] of Object.entries(obj||{})){
+          totals.set(k,(totals.get(k)||0)+(Number(v)||0));
+        }
+      }catch{}
+      if(Array.isArray(repo.topics)&&repo.topics.some(t=>/lua/i.test(t))&&!totals.has('Lua')){
+        totals.set('Lua',8400);
+      }
+    }));
+    const langs=[...totals.entries()].map(([lang,bytes])=>({lang,bytes})).sort((a,b)=>b.bytes-a.bytes).slice(0,8);
+    if(langs.length){
+      try{localStorage.setItem('gh-stacks-v1',JSON.stringify({at:Date.now(),langs,repos:own.length}))}catch{}
+      renderStacks(langs,own.length);
+    }
+  }catch{}
+}
+
+function renderGithub(d){
+  if(!d){$('gh-msg').textContent=T('ghProfile');$('gh-sub').textContent='github.com/'+CFG.ghUser;return}
+  $('gh-msg').textContent=d.msg||T('ghLatest');
+  $('gh-sub').textContent=[d.repo,d.at?ago(d.at):null].filter(Boolean).join(' · ');
+}
+async function loadGithub(){
+  let c=null;try{c=JSON.parse(localStorage.getItem('gh-cache')||'null')}catch{}
+  if(c&&Date.now()-c.at<10*60e3){renderGithub(c.d);return}
+  try{
+    const r=await fetch(`https://api.github.com/users/${CFG.ghUser}/events/public?per_page=15`);
+    const ev=await r.json();if(!Array.isArray(ev)||!ev.length)throw 0;
+    const e=ev.find(x=>x.type==='PushEvent')||ev[0];const repo=e.repo?.name||'';let msg='';
+    if(e.type==='PushEvent'){
+      const cs=e.payload?.commits;
+      if(cs&&cs.length)msg=cs[cs.length-1].message||'';
+      else if(e.payload?.head){try{const cr=await fetch(`https://api.github.com/repos/${repo}/commits/${e.payload.head}`);if(cr.ok)msg=(await cr.json()).commit?.message||''}catch{}}
+    }
+    const d={repo,msg:String(msg).split('\n')[0].slice(0,140),at:e.created_at};
+    try{localStorage.setItem('gh-cache',JSON.stringify({at:Date.now(),d}))}catch{}
+    renderGithub(d);
+  }catch{renderGithub(c?c.d:null)}
+}
+
+initTexts();
+loadMusic();loadWatch();loadGames();loadGithub();loadGithubStacks();
+setInterval(refreshLastfmPlayback,10e3);setInterval(loadMusic,15*60e3);
+setInterval(()=>{if(!document.hidden)loadWatch()},12e3);setInterval(()=>{if(!document.hidden)loadGames()},3e4);setInterval(loadGithub,10*60e3);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){loadWatch();loadGames();renderDailyVerse()}});
+
+const SFX=(function(){
+  let ctx=null,bufAllDay=null,bufBey=null,loading=false;
+  let fireSrc=null,fireGain=null,firePlaying=false;
+  let beySrc=null,beyGhost=null,beyPlaying=false;
+  async function loadBuf(url){
+    const r=await fetch(url);
+    const ab=await r.arrayBuffer();
+    return await ctx.decodeAudioData(ab);
+  }
+  function unlock(){
+    try{
+      if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
+      if(ctx.state==='suspended')ctx.resume();
+      if(!loading){
+        loading=true;
+        loadBuf('assets/audio/all-day.m4a').then(b=>{bufAllDay=b}).catch(()=>{});
+        loadBuf('assets/audio/beyonce-best.m4a').then(b=>{bufBey=b}).catch(()=>{});
+      }
+    }catch{}
+  }
+  function syncFire(active,bgAlpha){
+    if(!ctx||!bufAllDay)return;
+    try{
+      if(active&&!firePlaying){
+        stopFire();
+        fireGain=ctx.createGain();
+        fireGain.gain.setValueAtTime(0.01,ctx.currentTime);
+        fireGain.connect(ctx.destination);
+        fireSrc=ctx.createBufferSource();
+        fireSrc.buffer=bufAllDay;
+        fireSrc.loop=true;
+        fireSrc.connect(fireGain);
+        fireSrc.start(0);
+        firePlaying=true;
+      }
+      if(firePlaying&&fireGain){
+        const target=active?Math.max(0.05,Math.min(0.88,bgAlpha*0.88)):Math.max(0,bgAlpha*0.75);
+        fireGain.gain.setTargetAtTime(target,ctx.currentTime,0.06);
+        if(!active&&bgAlpha<=0.02){
+          stopFire();
+        }
+      }
+    }catch{}
+  }
+  function stopFire(){
+    if(fireSrc){try{fireSrc.stop();fireSrc.disconnect()}catch{}fireSrc=null}
+    if(fireGain){try{fireGain.disconnect()}catch{}fireGain=null}
+    firePlaying=false;
+  }
+  function playHauntingBeyonce(){
+    if(!ctx||!bufBey||beyPlaying)return;
+    try{
+      beyPlaying=true;
+      const now=ctx.currentTime;
+      const master=ctx.createGain();
+      master.gain.setValueAtTime(0.001,now);
+      master.gain.linearRampToValueAtTime(0.22,now+0.45);
+      master.connect(ctx.destination);
+
+      const lowpass=ctx.createBiquadFilter();
+      lowpass.type='lowpass';
+      lowpass.frequency.setValueAtTime(920,now);
+      lowpass.Q.setValueAtTime(2.6,now);
+
+      const delay=ctx.createDelay(1.0);
+      delay.delayTime.setValueAtTime(0.27,now);
+      const fb=ctx.createGain();
+      fb.gain.setValueAtTime(0.46,now);
+      const echoFilter=ctx.createBiquadFilter();
+      echoFilter.type='lowpass';
+      echoFilter.frequency.setValueAtTime(620,now);
+
+      lowpass.connect(master);
+      lowpass.connect(delay);
+      delay.connect(echoFilter);
+      echoFilter.connect(fb);
+      fb.connect(delay);
+      echoFilter.connect(master);
+
+      const rate=0.79+Math.random()*0.06;
+      const src1=ctx.createBufferSource();
+      src1.buffer=bufBey;
+      src1.playbackRate.setValueAtTime(rate,now);
+      src1.connect(lowpass);
+
+      const ghostGain=ctx.createGain();
+      ghostGain.gain.setValueAtTime(0.52,now);
+      ghostGain.connect(lowpass);
+      const src2=ctx.createBufferSource();
+      src2.buffer=bufBey;
+      src2.playbackRate.setValueAtTime(rate*0.91,now);
+      src2.connect(ghostGain);
+
+      beySrc=src1;beyGhost=src2;
+      const dur=(bufBey.duration/rate)+1.6;
+      master.gain.setValueAtTime(0.22,now+Math.max(0.5,dur-1.4));
+      master.gain.exponentialRampToValueAtTime(0.001,now+dur);
+      src1.start(now);
+      src2.start(now+0.09);
+      src1.onended=()=>{setTimeout(()=>{beyPlaying=false;try{master.disconnect()}catch{}},1400)};
+    }catch{beyPlaying=false}
+  }
+  function stopBey(){
+    if(beySrc){try{beySrc.stop();beySrc.disconnect()}catch{}beySrc=null}
+    if(beyGhost){try{beyGhost.stop();beyGhost.disconnect()}catch{}beyGhost=null}
+    beyPlaying=false;
+  }
+  function stopAll(){stopFire();stopBey()}
+  return {unlock,syncFire,stopFire,playHauntingBeyonce,stopAll};
+})();
+
+const PAL={
+  "h":"#16100b","H":"#38261a","s":"#8d5524","S":"#693b14","n":"#ad6e37",
+  "g":"#090a0f","G":"#64748b","v":"#cbd5e1","b":"#140e0a","w":"#f8fafc","W":"#94a3b8",
+  "k":"#13151c","K":"#292e3d","M":"#3f4659","c":"#f59e0b","C":"#fde047",
+  "m":"#94a3b8","j":"#4a6b96","J":"#314b6e","q":"#7699c4","l":"#e11d48","L":"#9f1239",
+  "y":"#f3d57b","Y":"#d4a946","u":"#fae6a7","z":"#a67c27",
+  "f":"#fce0cd","F":"#eabfa2","e":"#18181b","B":"#38bdf8",
+  "d":"#f1f5f9","D":"#cbd5e1","p":"#f7ebd2","T":"#64748b","t":"#cbd5e1","x":"#ffffff"
+};
+function sprite(rows,flip){const w=Math.max(...rows.map(r=>r.length)),h=rows.length,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
+  rows.forEach((r,j)=>[...r].forEach((ch,i)=>{if(PAL[ch]){x.fillStyle=PAL[ch];x.fillRect(flip?w-1-i:i,j,1,1)}}));return c}
+
+const KA_R=[
+  "......hhhhhhhhhh........",
+  ".....hhhHhhHhhHhh.......",
+  "....hhHhhhhhhhhHhh......",
+  "....hhhsssssssshhh......",
+  "....hsssnsnnnnsssh......",
+  "....hsggggggggggvv......",
+  "....hsgGggggGggggv......",
+  "....hssggggggggsss......",
+  ".....sssssnnnssss.......",
+  ".....ssssbbbbssss.......",
+  "......ssbbwwbbss........",
+  ".......ssbbbbss.........",
+  "....kkkkcCccCckkkk......",
+  "...kkKkkkkcCkkkkKkk.....",
+  "..kkKkkkkkMMkkkkkKkk....",
+  "..kkkkkkkkMMkkkkkkkss...",
+  "..kkkkkkkkkkkkkkkkkss...",
+  "..kkkkkkkkkkkkkkkkkss..m",
+  "..sskkkkkkkkkkkkkkcCs.mm",
+  "..ssskkkkkkkkkkkkkggggg.",
+  "...sskkkkkkkkkkkkk......",
+  "....kkkkkkkkkkkkkk......",
+  "....jjjjjjjjjjjjjj......",
+  "....jjjqjj..jjqjjj......",
+  "....jjJJjj..jjJJjj......",
+  "....jjjjj....jjjjj......",
+  "....jjJJ......JJjj......",
+  "...wwwwww....wwwwww.....",
+  "...wwllww....wwllww.....",
+  "...WWWWWW....WWWWWW....."
+];
+const KC_R=[
+  "......hhhhhhhhhh........",
+  ".....hhhHhhHhhHhh.......",
+  "....hhHhhhhhhhhHhh......",
+  "....hhhsssssssshhh......",
+  "....hsssnsnnnnsssh......",
+  "....hsggggggggggvv......",
+  "....hsgGggggGggggv......",
+  "....hssggggggggsss......",
+  ".....sssssnnnssss.......",
+  ".....ssssbbbbssss.......",
+  "......ssbbwwbbss........",
+  ".......ssbbbbss.........",
+  "....kkkkcCccCckkkk......",
+  "...kkKkkkkcCkkkkKkk.....",
+  "..kkKkkkkkMMkkkkkKkk....",
+  "..kkkkkkkkMMkkkkkkkss...",
+  "..kkkkkkkkkkkkkkkkkss...",
+  "..kkkkkkkkkkkkkkkkkss..m",
+  "..sskkkkkkkkkkkkkkcCs.mm",
+  "..ssskkkkkkkkkkkkkggggg.",
+  "...sskkkkkkkkkkkkk......",
+  "....kkkkkkkkkkkkkk......",
+  "....jjjjjjjjjjjjjj......",
+  ".....jjqjjjjjjqjj.......",
+  ".....jjJJjjjjJJjj.......",
+  "......jjjj..jjjj........",
+  ".....jjJJ....JJjj.......",
+  ".....wwwwww..wwwwww.....",
+  ".....wwllww..wwllww.....",
+  ".....WWWWWW..WWWWWW....."
+];
+const KJ_R=[
+  "......hhhhhhhhhh........",
+  ".....hhhHhhHhhHhh.......",
+  "....hhHhhhhhhhhHhh......",
+  "....hhhsssssssshhh......",
+  "....hsssnsnnnnsssh......",
+  "....hsggggggggggvv......",
+  "....hsgGggggGggggv......",
+  "....hssggggggggsss......",
+  ".....sssssnnnssss.......",
+  ".....ssssbbbbssss.......",
+  "......ssbbwwbbss........",
+  ".......ssbbbbss.........",
+  "....kkkkcCccCckkkk......",
+  "...kkKkkkkcCkkkkKkk.....",
+  "..kkKkkkkkMMkkkkkKkk....",
+  "..kkkkkkkkMMkkkkkkkss...",
+  "..kkkkkkkkkkkkkkkkkss...",
+  "..kkkkkkkkkkkkkkkkkss..m",
+  "..sskkkkkkkkkkkkkkcCs.mm",
+  "..ssskkkkkkkkkkkkkggggg.",
+  "...sskkkkkkkkkkkkk......",
+  "....kkkkkkkkkkkkkk......",
+  "....jjjjjjjjjjjjjj......",
+  "...jjjqjj....jjqjjj.....",
+  "..jjJJjj......jjJJjj....",
+  ".jjjjj..........jjjjj...",
+  ".jjJJ............JJjj...",
+  "wwwwww..........wwwwww..",
+  "wwllww..........wwllww..",
+  "WWWWWW..........WWWWWW.."
+];
+const TAY_R=[
+  ".............uuuuuuu........",
+  "...........uuyyyyyyyuu......",
+  "..........uyyYyyyyyyYyu.....",
+  "...xx.....yyyYyyyyyyyyyy....",
+  "...xxt....yyyyffffffyyyyz...",
+  "...t.t....yyfffffffffyyyz...",
+  "..xtx.t...yfffeBffffffyyz...",
+  ".xttx.t...yfffffffffffyyz...",
+  "..ttt.t....ffflllffffxxyz...",
+  "...tT.t....fffllllfffxxy....",
+  "...tTTt.....fffffffff.yy....",
+  "..ttTTt......fffffff..y.....",
+  "..flttt....ddddxddddff......",
+  "..ffltt...ddxddDddxddff.....",
+  "...fflt...ddpddxddpdddff....",
+  "....gggg..ddxddDddxdddpf....",
+  "...gggggg.ddpddxddpddddf....",
+  "...tttttt.ddxddDddxdddd.....",
+  "..........ddpddxddpdddd.....",
+  "..........ddxddDddxdddd.....",
+  "..........ddpddxddpdddd.....",
+  "..........ddxddDddxddd......",
+  "...........ddpddxddpdd......",
+  "...........ddxddDddxdd......",
+  "...........ddpddxddpdd......",
+  "............ddxddDddxd......",
+  ".............ffff..ffff.....",
+  ".............ffff..ffff.....",
+  ".............ffff..ffff.....",
+  "............dddd...dddd....."
+];
+const SK_A=sprite(KA_R),SK_C=sprite(KC_R),SK_J=sprite(KJ_R),SP_T=sprite(TAY_R);
+const cv=$('cv'),cx=cv.getContext('2d'),GY=144,S=1.55,KW=Math.round(24*S),KH=Math.round(30*S),TW=Math.round(28*S),TH=Math.round(30*S);
+cx.imageSmoothingEnabled=false;
+const game={active:false,looping:false,run:false,score:0,hi:0,speed:3.8,k:{x:28,y:GY,dy:0},obs:[],f:0,dash:0,gap:235,nextBey:200,
+  fire:{state:'idle',t:0,next:300,item:null,bg:0,parts:[],banner:0}};
+try{game.hi=+localStorage.getItem('wg-hi')||0}catch(e){}
+const pad=n=>String(Math.floor(n)).padStart(5,'0');$('hi').textContent=pad(game.hi);
+const GRAV=.52,JUMP=-10.3;
+function start(){
+  SFX.unlock();
+  SFX.stopAll();
+  Object.assign(game,{run:true,score:0,speed:3.8,obs:[],f:0,gap:235,nextBey:140+Math.floor(Math.random()*220)});
+  Object.assign(game.fire,{state:'idle',t:0,next:300,item:null,bg:0,parts:[],banner:0});
+  game.k.y=GY;game.k.dy=0;$('over').classList.add('off');
+}
+function jump(){SFX.unlock();if(!game.run){start();return}if(game.k.y>=GY){game.k.dy=JUMP}}
+function over(){
+  game.run=false;
+  SFX.stopAll();
+  if(game.score>game.hi){game.hi=game.score;$('hi').textContent=pad(game.hi);try{localStorage.setItem('wg-hi',Math.floor(game.hi))}catch(e){}}
+  $('over-t').textContent=T('gameOver');$('over').classList.remove('off');
+}
+addEventListener('keydown',e=>{if(game.active&&(e.code==='Space'||e.code==='ArrowUp')){e.preventDefault();jump()}});
+cv.addEventListener('pointerdown',jump);$('over').addEventListener('pointerdown',jump);$('jump').addEventListener('click',jump);
+
+const FIRE_FRAMES=480;
+const tip=()=>({x:game.k.x+KW+3,y:game.k.y-KH+Math.round(18*S)-13});
+function fireStep(){
+  const F=game.fire,g=game,k=g.k;
+  if(F.state==='idle'&&g.score>=F.next&&!F.item){F.item={x:430,y:-30,dy:0,landed:false}}
+  if(F.item){
+    const it=F.item;
+    if(!it.landed){it.dy+=.5;it.y+=it.dy;if(it.y>=GY-22){it.y=GY-22;it.landed=true}}else it.x-=g.speed;
+    if(k.x+KW-8>it.x&&k.x+8<it.x+22&&k.y>it.y-KH+10&&it.landed){F.item=null;F.state='on';F.t=FIRE_FRAMES;F.banner=120}
+    else if(it.x<-40){F.item=null;F.next=g.score+220}
+  }
+  if(F.state==='on'){
+    F.t--;F.bg=Math.min(1,F.bg+.035);g.score+=.25;
+    const p=tip();
+    for(let i=0;i<5;i++)F.parts.push({x:p.x+(Math.random()-.5)*5,y:p.y-2,vx:(Math.random()-.35)*1.1,vy:-(2.6+Math.random()*3),l:0,max:24+Math.random()*22,sz:5+Math.random()*4});
+    if(F.t<=0){F.state='cool';F.next=g.score+650}
+  }else if(F.state==='cool'){F.bg=Math.max(0,F.bg-.04);if(F.bg<=0&&!F.parts.length)F.state='idle'}
+  else F.bg=Math.max(0,F.bg-.04);
+  SFX.syncFire(F.state==='on',F.bg);
+  if(F.banner>0)F.banner--;
+  F.parts.forEach(q=>{q.l++;q.x+=q.vx+Math.sin(q.l/3+q.x)*.18;q.y+=q.vy;q.vy*=.985});
+  F.parts=F.parts.filter(q=>q.l<q.max);
+  $('gbg').style.opacity=F.bg.toFixed(2);
+}
+function step(){
+  const g=game,k=g.k;g.f++;g.score+=.25;g.speed=Math.min(8.8,3.8+g.score/130);g.dash=(g.dash+g.speed)%40;
+  if(g.f>=g.nextBey){
+    if(g.fire.state!=='on')SFX.playHauntingBeyonce();
+    g.nextBey=g.f+340+Math.floor(Math.random()*420);
+  }
+  k.dy+=GRAV;k.y=Math.min(GY,k.y+k.dy);if(k.y>=GY)k.dy=0;
+  const lastX=g.obs.length?g.obs[g.obs.length-1].x:-1e3;
+  if(cv.width-lastX>g.gap&&!(g.fire.item&&g.fire.item.x>cv.width-160)){g.obs.push({x:cv.width+10});g.gap=g.speed*42*1.12+90+Math.random()*140}
+  g.obs.forEach(o=>o.x-=g.speed);g.obs=g.obs.filter(o=>o.x>-TW-10);
+  for(const o of g.obs){if(k.x+KW-11>o.x+12&&k.x+9<o.x+TW-11&&k.y>GY-TH+14){fireStep();over();return}}
+  fireStep();
+  $('sc').textContent=pad(g.score);
+}
+function drawFlame(){
+  const F=game.fire;
+  cx.save();cx.globalCompositeOperation='lighter';
+  F.parts.forEach(q=>{const a=q.l/q.max,sz=Math.max(1.5,q.sz*(1-a*.8));
+    const col=a<.18?'#fff4c2':a<.42?'#ffd35c':a<.7?'#ff8a1f':'#c2310e';
+    cx.globalAlpha=Math.max(0,1-a*.9);cx.fillStyle=col;cx.fillRect(Math.round(q.x-sz/2),Math.round(q.y-sz/2),Math.ceil(sz),Math.ceil(sz))});
+  if(F.state==='on'){const p=tip(),t=game.f/2;
+    [['#ff6a1a',.5,8,17],['#ff9d2e',.6,6,14],['#ffd35c',.7,4,11],['#fff4c2',.8,2.2,7.5]].forEach((c,j)=>{
+      cx.globalAlpha=c[1];cx.fillStyle=c[0];cx.beginPath();cx.ellipse(p.x+Math.sin(t+j*1.7)*2.5,p.y-6-j*8,c[2]+Math.sin(t*1.3+j)*1.2,c[3],0,0,Math.PI*2);cx.fill()});
+    const r=cx.createRadialGradient(p.x,p.y-22,3,p.x,p.y-22,52);r.addColorStop(0,'rgba(255,170,60,.35)');r.addColorStop(1,'rgba(255,120,20,0)');
+    cx.globalAlpha=1;cx.fillStyle=r;cx.fillRect(p.x-60,p.y-80,120,120)}
+  cx.restore();
+}
+function drawLauncher(){
+  const k=game.k,hx=k.x+KW-5,hy=k.y-KH+Math.round(18*S);
+  const p=tip();
+  cx.save();cx.lineCap='butt';
+  cx.strokeStyle='#14161d';cx.lineWidth=10;cx.beginPath();cx.moveTo(hx,hy+3);cx.lineTo(p.x,p.y+6);cx.stroke();
+  cx.strokeStyle='#7f8aa1';cx.lineWidth=7;cx.beginPath();cx.moveTo(hx,hy+3);cx.lineTo(p.x,p.y+6);cx.stroke();
+  cx.strokeStyle='#c4ccdc';cx.lineWidth=1.5;cx.beginPath();cx.moveTo(hx-1.5,hy+2);cx.lineTo(p.x-1.5,p.y+6);cx.stroke();
+  cx.fillStyle='#b91c1c';cx.fillRect(hx-8,hy+1,7,10);cx.fillStyle='#f87171';cx.fillRect(hx-7,hy+2,2,8);
+  cx.fillStyle='#14161d';cx.beginPath();cx.arc(p.x,p.y+3,6,0,7);cx.fill();
+  cx.fillStyle='#ff8a1f';cx.beginPath();cx.arc(p.x,p.y+3,4.2,0,7);cx.fill();cx.fillStyle='#ffd35c';cx.beginPath();cx.arc(p.x,p.y+2,2,0,7);cx.fill();
+  cx.fillStyle=PAL.s;cx.fillRect(hx-4,hy,6,5);cx.fillStyle='#14161d';cx.fillRect(hx-4,hy+5,6,2);
+  cx.restore();
+}
+function drawCrate(it){
+  cx.save();cx.shadowColor='#ff8a1f';cx.shadowBlur=10;
+  cx.fillStyle='#7c2d12';cx.fillRect(it.x,it.y,22,22);cx.shadowBlur=0;
+  cx.fillStyle='#c2410c';cx.fillRect(it.x+2,it.y+2,18,18);cx.fillStyle='#1c1f29';cx.fillRect(it.x+4,it.y+4,14,14);
+  cx.fillStyle='#ff8a1f';cx.fillRect(it.x+7,it.y+8,8,8);cx.fillStyle='#ffd35c';cx.fillRect(it.x+9,it.y+5,4,7);cx.fillRect(it.x+8,it.y+10,6,4);
+  cx.restore();
+}
+function draw(){cx.clearRect(0,0,cv.width,cv.height);
+  cx.fillStyle='#262b3b';cx.fillRect(0,GY+2,600,1);
+  for(let x=-game.dash;x<600;x+=40)cx.fillRect(x,GY+9,10,1);
+  const k=game.k,air=k.y<GY,run=!air&&Math.floor(game.f/7)%2,spr=air?SK_J:run?SK_C:SK_A;
+  game.obs.forEach(o=>cx.drawImage(SP_T,Math.round(o.x),GY-TH,TW,TH));
+  if(game.fire.item)drawCrate(game.fire.item);
+  cx.drawImage(spr,Math.round(k.x),Math.round(k.y-KH),KW,KH);
+  if(game.fire.state==='on')drawLauncher();
+  drawFlame();
+  if(game.fire.banner>0&&Math.floor(game.fire.banner/8)%2===0){cx.save();cx.font="700 13px 'JetBrains Mono',monospace";cx.textAlign='center';cx.fillStyle='#ffd35c';cx.shadowColor='#ff5a1f';cx.shadowBlur=10;cx.fillText('🔥 '+T('gameFire')+' 🔥',300,24);cx.restore()}
+}
+const DT=1000/60;let lastT=0,acc=0;
+function loop(ts){if(!game.active){game.looping=false;lastT=0;return}
+  if(!lastT)lastT=ts;acc+=Math.min(100,ts-lastT);lastT=ts;
+  while(acc>=DT){if(game.run)step();acc-=DT}
+  draw();requestAnimationFrame(loop)}
+function startLoop(){lastT=0;acc=0;if(!game.looping){game.looping=true;requestAnimationFrame(loop)}}
+draw();
+</script>
+</body>
+</html>
