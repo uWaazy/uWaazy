@@ -198,6 +198,11 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
   .frame{min-height:108px}.track-view{gap:14px;padding:8px 10px 4px 12px}.track-insights{padding:2px 6px 4px 12px}.track-art{width:84px;height:84px;border-radius:16px;font-size:28px}.ta-cover{font-size:28px}.track-title{font-size:19px}.track-artist{font-size:13.5px}
   .gh{padding:10px}.gh em{display:none}
   .stacks-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+  .bible-verse{flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px}
+  .bv-left{width:100%;align-items:flex-start}
+  .bv-ico{margin-top:2px}
+  .bv-text{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.45;font-size:12px}
+  .bv-ref{margin-left:0;align-self:flex-end}
 }
 @media(prefers-reduced-motion:reduce){.pill.live::before,.bgl,.ti-heart{animation:none}.bar span,.bgl{transition:none}}
 </style>
@@ -291,14 +296,14 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
             <span class="gh-copy"><b>uWaazy <small data-i18n="onGh">on GitHub</small></b><span class="gh-msg" id="gh-msg"></span><span class="gh-sub" id="gh-sub"></span></span>
           </a>
           <div class="gh-actions">
-            <button type="button" class="gh-stack-btn" id="gh-stack-btn" aria-expanded="true">
+            <button type="button" class="gh-stack-btn" id="gh-stack-btn" aria-expanded="false">
               <span>⚡</span><span data-i18n="stacksBtn">Stacks</span>
             </button>
             <a href="https://github.com/uWaazy" target="_blank" rel="noopener"><em data-i18n="open">open ↗</em></a>
           </div>
         </div>
 
-        <div class="stacks-card" id="stacks-card">
+        <div class="stacks-card" id="stacks-card" hidden>
           <div class="stacks-head">
             <div class="stacks-brand">
               <span class="stacks-bar"></span>
@@ -381,7 +386,8 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
 <script>
 const Q=new URLSearchParams(location.search);
 if(Q.has('nobg')||Q.has('embed'))document.body.classList.add('no-bg');
-const CFG={simklApi:'/api/simkl',localSimkl:'http://127.0.0.1:18095/simkl',demo:!!window.PREVIEW_DEMO||Q.has('demo'),ghUser:'uWaazy'};
+const isLocalHost=Boolean(['localhost','127.0.0.1','::1'].includes(location.hostname)||location.hostname.endsWith('.local'));
+const CFG={simklApi:'/api/simkl',localSimkl:isLocalHost?'http://127.0.0.1:18095/simkl':null,demo:!!window.PREVIEW_DEMO||Q.has('demo'),ghUser:'uWaazy'};
 const $=id=>document.getElementById(id);
 
 const I18N={
@@ -849,6 +855,7 @@ function renderWatch(w){
 }
 let watchShown=false;
 async function fetchLocalSimkl(){
+  if(!CFG.localSimkl)return null;
   try{
     const r=await fetch(`${CFG.localSimkl}?lang=${encodeURIComponent(LANG)}`,{cache:'no-store',signal:AbortSignal.timeout(1400)});
     if(!r.ok)return null;
