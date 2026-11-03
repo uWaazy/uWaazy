@@ -589,11 +589,14 @@ export default async function handler(req, res) {
   <text x="88" y="687" fill="#8a91a6" font-size="11.5">${esc([gh.repo, gh.at ? agoText(gh.at, lang) : ''].filter(Boolean).join(' · '))}</text>
   <text x="722" y="668" text-anchor="end" fill="#22d3ee" font-size="13">${pt ? 'abrir ↗' : 'open ↗'}</text>
 
-  <rect x="22" y="710" width="716" height="90" rx="14" fill="#0e1016" stroke="#222633"/>
-  <rect x="36" y="723" width="3.5" height="30" rx="1.75" fill="#8b5cf6"/>
-  <text x="48" y="734" fill="#8a91a6" font-size="9.5" font-weight="600" letter-spacing="2" class="mono">DEVELOPER STACK</text>
-  <text x="48" y="751" fill="#ffffff" font-size="15" font-weight="700" letter-spacing="0.8">STACKS &amp; LANGUAGES</text>
-  ${stacksSvg}
+  <a href="${PROD_ORIGIN}#stacks" target="_blank">
+    <rect x="22" y="710" width="716" height="90" rx="14" fill="#0e1016" stroke="#222633"/>
+    <rect x="36" y="723" width="3.5" height="30" rx="1.75" fill="#8b5cf6"/>
+    <text x="48" y="734" fill="#8a91a6" font-size="9.5" font-weight="600" letter-spacing="2" class="mono">DEVELOPER STACK</text>
+    <text x="48" y="751" fill="#ffffff" font-size="15" font-weight="700" letter-spacing="0.8">STACKS &amp; LANGUAGES</text>
+    <text x="722" y="751" text-anchor="end" fill="#8a91a6" font-size="11.5" class="mono">${pt ? 'ampliar ↗' : 'expand ↗'}</text>
+    ${stacksSvg}
+  </a>
 </svg>`;
 
   res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');

@@ -142,14 +142,23 @@ a{color:inherit;text-decoration:none}
 .gh-stack-btn:hover,.gh-stack-btn[aria-expanded=true]{border-color:var(--purple);color:#d8b4fe;background:rgba(139,92,246,.12)}
 .gh em{font-style:normal;color:var(--cyan);font-size:13px;white-space:nowrap}
 
-.stacks-card{background:#0d0f15;border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:16px}
-.stacks-card[hidden]{display:none!important}
+.stacks-card{background:#0e1016;border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;transition:border-color .2s}
+.stacks-card:hover{border-color:#3a4157}
+.stacks-compact{cursor:pointer;display:flex;flex-direction:column;gap:10px}
 .stacks-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .stacks-brand{display:flex;align-items:stretch;gap:12px}
-.stacks-bar{width:4px;border-radius:4px;background:var(--purple);box-shadow:0 0 12px rgba(139,92,246,.55)}
+.stacks-bar{width:3.5px;border-radius:2px;background:var(--purple);box-shadow:0 0 10px rgba(139,92,246,.55)}
 .stacks-titles{display:flex;flex-direction:column;justify-content:center;gap:1px}
-.stacks-titles small{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;font-weight:600}
-.stacks-titles h3{font-size:20px;font-weight:700;letter-spacing:.04em;color:#fff;line-height:1.1}
+.stacks-titles small{font-size:9.5px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;font-weight:600}
+.stacks-titles h3{font-size:15px;font-weight:700;letter-spacing:.05em;color:#fff;line-height:1.15}
+.stacks-toggle-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid #232839;padding:3px 8px;border-radius:6px;transition:.2s}
+.stacks-toggle-badge svg{transition:transform .25s ease}
+.stacks-card.expanded .stacks-toggle-badge svg{transform:rotate(180deg)}
+.stacks-preview-pills{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.st-pill{display:inline-flex;align-items:center;gap:6px;background:#171a23;border:1px solid #252a3a;border-radius:7px;padding:4px 9px;font-size:11.5px;font-weight:600;color:#e8ecf5;line-height:1.2}
+.st-pill i{width:6.5px;height:6.5px;border-radius:50%;display:inline-block;flex:none}
+.stacks-details{display:flex;flex-direction:column;gap:16px;padding-top:14px;border-top:1px solid #1a1e2a;margin-top:2px}
+.stacks-details[hidden]{display:none!important}
 .stacks-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 22px}
 .stack-cat{display:flex;flex-direction:column;gap:9px}
 .stack-cat-lbl{display:inline-flex;align-items:center;gap:7px;font-size:10.5px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;font-weight:600}
@@ -166,11 +175,11 @@ a{color:inherit;text-decoration:none}
 .stack-mode:hover,.stack-mode.on{color:#818cf8;filter:drop-shadow(0 0 6px rgba(129,140,248,.6))}
 .stack-mode svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 
-.bible-verse{margin:2px 0 14px;padding:9px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(23,26,35,.86),rgba(15,17,24,.92));border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
-.bv-left{display:inline-flex;align-items:center;gap:8px;min-width:0;flex:1}
-.bv-ico{font-style:normal;font-size:13px;line-height:1;flex:none}
-.bv-ref{color:var(--cyan);font-weight:600;letter-spacing:.03em;text-transform:none;font-size:10.5px;white-space:nowrap;flex:none;margin-left:auto}
-.bv-text{font-size:11.6px;line-height:1.35;color:#d6dced;font-style:italic;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bible-verse{margin:2px 0 14px;padding:10px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(23,26,35,.86),rgba(15,17,24,.92));border:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.bv-left{display:flex;align-items:flex-start;gap:8px;min-width:0;flex:1 1 260px}
+.bv-ico{font-style:normal;font-size:13px;line-height:1.4;flex:none;margin-top:1px}
+.bv-ref{color:var(--cyan);font-weight:600;letter-spacing:.03em;text-transform:none;font-size:11px;white-space:nowrap;flex:none;margin-left:auto;align-self:flex-end}
+.bv-text{font-size:12px;line-height:1.45;color:#d6dced;font-style:italic;min-width:0;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;word-break:break-word}
 
 .links{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;justify-content:center}
 .links a{font-size:12px;padding:6px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted);transition:.2s;display:inline-flex;align-items:center;gap:6px}
@@ -197,12 +206,16 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
   .player{grid-template-columns:minmax(0,1fr)}.side{flex-direction:row;min-width:0}.album-chip{padding:8px 8px 13px;gap:7px}.album-chip img{width:42px;height:42px}.album-chip small{font-size:8px}.album-chip strong{font-size:10.5px}.album-chip .album-meta{font-size:8.8px}
   .frame{min-height:108px}.track-view{gap:14px;padding:8px 10px 4px 12px}.track-insights{padding:2px 6px 4px 12px}.track-art{width:84px;height:84px;border-radius:16px;font-size:28px}.ta-cover{font-size:28px}.track-title{font-size:19px}.track-artist{font-size:13.5px}
   .gh{padding:10px}.gh em{display:none}
+  .stacks-card{padding:12px 14px}
+  .stacks-titles h3{font-size:14px}
+  .stacks-preview-pills{gap:6px}
+  .st-pill{font-size:10.5px;padding:3px 7px}
   .stacks-grid{grid-template-columns:minmax(0,1fr);gap:14px}
-  .bible-verse{flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px}
-  .bv-left{width:100%;align-items:flex-start}
-  .bv-ico{margin-top:2px}
-  .bv-text{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.45;font-size:12px}
-  .bv-ref{margin-left:0;align-self:flex-end}
+  .bible-verse{flex-direction:column;align-items:flex-start;gap:8px;padding:10px 12px;width:100%}
+  .bv-left{width:100%;display:flex;align-items:flex-start;gap:8px}
+  .bv-ico{margin-top:2px;flex:none}
+  .bv-text{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;word-break:break-word;line-height:1.45;font-size:12px}
+  .bv-ref{margin-left:auto;align-self:flex-end}
 }
 @media(prefers-reduced-motion:reduce){.pill.live::before,.bgl,.ti-heart{animation:none}.bar span,.bgl{transition:none}}
 </style>
@@ -303,46 +316,65 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
           </div>
         </div>
 
-        <div class="stacks-card" id="stacks-card" hidden>
-          <div class="stacks-head">
-            <div class="stacks-brand">
-              <span class="stacks-bar"></span>
-              <div class="stacks-titles">
-                <small class="mono" data-i18n="devStack">DEVELOPER STACK</small>
-                <h3 data-i18n="stacksTitle">STACKS</h3>
+        <div class="stacks-card" id="stacks-card">
+          <div class="stacks-compact" id="stacks-toggle-bar" role="button" tabindex="0" aria-expanded="false" aria-controls="stacks-details" title="Clique para ampliar / recolher">
+            <div class="stacks-head">
+              <div class="stacks-brand">
+                <span class="stacks-bar"></span>
+                <div class="stacks-titles">
+                  <small class="mono" data-i18n="devStack">DEVELOPER STACK</small>
+                  <h3 data-i18n="stacksTitle">STACKS &amp; LANGUAGES</h3>
+                </div>
+              </div>
+              <div class="stacks-toggle-badge">
+                <span class="stacks-toggle-label mono" id="stacks-toggle-label">ampliar</span>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
               </div>
             </div>
-          </div>
-          <div class="stacks-grid">
-            <div class="stack-cat">
-              <span class="stack-cat-lbl mono" data-i18n="stLanguages">LANGUAGES</span>
-              <div class="stack-items" id="st-langs"></div>
-            </div>
-            <div class="stack-cat">
-              <span class="stack-cat-lbl mono" data-i18n="stPlatforms">PLATFORMS</span>
-              <div class="stack-items" id="st-platforms"></div>
-            </div>
-            <div class="stack-cat">
-              <span class="stack-cat-lbl mono" data-i18n="stData">DATA</span>
-              <div class="stack-items" id="st-data"></div>
-            </div>
-            <div class="stack-cat">
-              <span class="stack-cat-lbl mono" data-i18n="stTools">TOOLS</span>
-              <div class="stack-items" id="st-tools"></div>
+            <div class="stacks-preview-pills" id="stacks-preview-pills">
+              <span class="st-pill"><i style="background:#9b4f96"></i>C#</span>
+              <span class="st-pill"><i style="background:#f7df1e"></i>JavaScript</span>
+              <span class="st-pill"><i style="background:#3776ab"></i>Python</span>
+              <span class="st-pill"><i style="background:#5391fe"></i>PowerShell</span>
+              <span class="st-pill"><i style="background:#339933"></i>Node.js</span>
+              <span class="st-pill"><i style="background:#e34f26"></i>HTML/CSS</span>
+              <span class="st-pill"><i style="background:#dc382d"></i>Redis</span>
+              <span class="st-pill"><i style="background:#f05032"></i>Git</span>
             </div>
           </div>
-          <div class="stacks-foot mono">
-            <span id="stacks-repo-note">github.com/uWaazy</span>
-            <div class="stacks-modes">
-              <button type="button" class="stack-mode on" data-mode="all" title="All Stacks" aria-label="All Stacks">
-                <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-              </button>
-              <button type="button" class="stack-mode" data-mode="web" title="Web & Cloud" aria-label="Web & Cloud">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              </button>
-              <button type="button" class="stack-mode" data-mode="sys" title="Desktop & Automation" aria-label="Desktop & Automation">
-                <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-              </button>
+
+          <div class="stacks-details" id="stacks-details" hidden>
+            <div class="stacks-grid">
+              <div class="stack-cat">
+                <span class="stack-cat-lbl mono" data-i18n="stLanguages">LANGUAGES</span>
+                <div class="stack-items" id="st-langs"></div>
+              </div>
+              <div class="stack-cat">
+                <span class="stack-cat-lbl mono" data-i18n="stPlatforms">PLATFORMS</span>
+                <div class="stack-items" id="st-platforms"></div>
+              </div>
+              <div class="stack-cat">
+                <span class="stack-cat-lbl mono" data-i18n="stData">DATA</span>
+                <div class="stack-items" id="st-data"></div>
+              </div>
+              <div class="stack-cat">
+                <span class="stack-cat-lbl mono" data-i18n="stTools">TOOLS</span>
+                <div class="stack-items" id="st-tools"></div>
+              </div>
+            </div>
+            <div class="stacks-foot mono">
+              <span id="stacks-repo-note">github.com/uWaazy</span>
+              <div class="stacks-modes">
+                <button type="button" class="stack-mode on" data-mode="all" title="All Stacks" aria-label="All Stacks">
+                  <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                </button>
+                <button type="button" class="stack-mode" data-mode="web" title="Web & Cloud" aria-label="Web & Cloud">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </button>
+                <button type="button" class="stack-mode" data-mode="sys" title="Desktop & Automation" aria-label="Desktop & Automation">
+                  <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -401,7 +433,7 @@ en:{listening:'Listening',watching:'Watching',playing:'Playing',open:'open ↗',
  lfApiErr:'Last.fm · API error',lfApiHint:'Check Last.fm API settings',lfFailed:'Last.fm · request failed',unavailable:'Temporarily unavailable',sfSetup:'stats.fm · setup needed',sfCfg:'Configure user ID',sfAdd:'Add STATSFM_USER_ID in Vercel',sfApiErr:'stats.fm · API error',albumStats:'Album statistics',noRanking:'No album ranking available',
  loading:'Loading…',checkingSimkl:'Checking Simkl',watchingNow:'Watching now',lastWatched:'Last watched',nothingYet:'Nothing yet',noHistory:'No watch history',watchHint:'Watch something and it shows up here',apiError:'API error',simklDown:'Simkl unavailable',simklHint:'Check SIMKL_CLIENT_ID / SIMKL_TOKEN in Vercel',
  playingNow:'Playing now',lastPlayed:'Last played',idle:'Idle',session:'Session',total:'total',recently:'Recently played',noGames:'No recent games',syncHint:'Sync your Playnite library to show play history',
- ghLatest:'Latest activity',ghProfile:'GitHub profile',justNow:'just now',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'public repositories analyzed',
+ ghLatest:'Latest activity',ghProfile:'GitHub profile',justNow:'just now',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS & LANGUAGES',expand:'expand',collapse:'collapse',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'public repositories analyzed',
  gameJump:"Jump over Taylor's trophy!",gameStart:'Tap, click or press Space to start',gameOver:'Taylor had the trophy.',gameBtn:'KANYE JUMP (TAP / SPACE)',hi:'HI',score:'SCORE',gameFire:'IMMA LET YOU FINISH…'},
 pt:{listening:'Ouvindo',watching:'Assistindo',playing:'Jogando',open:'abrir ↗',onYgp:'no Your Gamer Profile',onGh:'no GitHub',
  nowListening:'Ouvindo agora',lastTrack:'Última música',noTrack:'Nenhuma música recente',noScrobbles:'Ainda sem scrobbles recentes',lfLoading:'Carregando Last.fm…',lfChecking:'Verificando scrobbles recentes',lfDown:'Last.fm indisponível no momento',retrying:'Tentando de novo automaticamente',
@@ -413,7 +445,7 @@ pt:{listening:'Ouvindo',watching:'Assistindo',playing:'Jogando',open:'abrir ↗'
  lfApiErr:'Last.fm · erro na API',lfApiHint:'Verifique a API do Last.fm',lfFailed:'Last.fm · falha na requisição',unavailable:'Indisponível no momento',sfSetup:'stats.fm · falta configurar',sfCfg:'Configure o ID do usuário',sfAdd:'Adicione STATSFM_USER_ID na Vercel',sfApiErr:'stats.fm · erro na API',albumStats:'Estatísticas do álbum',noRanking:'Sem ranking de álbuns',
  loading:'Carregando…',checkingSimkl:'Consultando o Simkl',watchingNow:'Assistindo agora',lastWatched:'Último assistido',nothingYet:'Nada ainda',noHistory:'Sem histórico',watchHint:'Assista algo e aparece aqui',apiError:'Erro na API',simklDown:'Simkl indisponível',simklHint:'Verifique SIMKL_CLIENT_ID / SIMKL_TOKEN na Vercel',
  playingNow:'Jogando agora',lastPlayed:'Último jogado',idle:'Ocioso',session:'Sessão',total:'no total',recently:'Jogado recentemente',noGames:'Nenhum jogo recente',syncHint:'Sincronize sua biblioteca do Playnite para ver o histórico',
- ghLatest:'Atividade recente',ghProfile:'Perfil do GitHub',justNow:'agora mesmo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositórios públicos analisados',
+ ghLatest:'Atividade recente',ghProfile:'Perfil do GitHub',justNow:'agora mesmo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS & LINGUAGENS',expand:'ampliar',collapse:'recolher',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositórios públicos analisados',
  gameJump:'Pule o troféu da Taylor!',gameStart:'Toque, clique ou aperte Espaço para começar',gameOver:'A Taylor ficou com o troféu.',gameBtn:'KANYE PULA (TOQUE / ESPAÇO)',hi:'REC',score:'PONTOS',gameFire:'DEIXA EU TERMINAR…'},
 es:{listening:'Escuchando',watching:'Viendo',playing:'Jugando',open:'abrir ↗',onYgp:'en Your Gamer Profile',onGh:'en GitHub',
  nowListening:'Escuchando ahora',lastTrack:'Última canción',noTrack:'Sin canciones recientes',noScrobbles:'Aún sin scrobbles recientes',lfLoading:'Cargando Last.fm…',lfChecking:'Revisando scrobbles recientes',lfDown:'Last.fm no disponible por ahora',retrying:'Reintentando automáticamente',
@@ -425,7 +457,7 @@ es:{listening:'Escuchando',watching:'Viendo',playing:'Jugando',open:'abrir ↗',
  lfApiErr:'Last.fm · error de API',lfApiHint:'Revisa la API de Last.fm',lfFailed:'Last.fm · falló la solicitud',unavailable:'No disponible por ahora',sfSetup:'stats.fm · falta configurar',sfCfg:'Configura el ID de usuario',sfAdd:'Agrega STATSFM_USER_ID en Vercel',sfApiErr:'stats.fm · error de API',albumStats:'Estadísticas del álbum',noRanking:'Sin ranking de álbumes',
  loading:'Cargando…',checkingSimkl:'Consultando Simkl',watchingNow:'Viendo ahora',lastWatched:'Último visto',nothingYet:'Nada todavía',noHistory:'Sin historial',watchHint:'Mira algo y aparecerá aquí',apiError:'Error de API',simklDown:'Simkl no disponible',simklHint:'Revisa SIMKL_CLIENT_ID / SIMKL_TOKEN en Vercel',
  playingNow:'Jugando ahora',lastPlayed:'Último jugado',idle:'Inactivo',session:'Sesión',total:'en total',recently:'Jugado recientemente',noGames:'Sin juegos recientes',syncHint:'Sincroniza tu biblioteca de Playnite para ver el historial',
- ghLatest:'Actividad reciente',ghProfile:'Perfil de GitHub',justNow:'ahora mismo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositorios públicos analisados',
+ ghLatest:'Actividad reciente',ghProfile:'Perfil de GitHub',justNow:'ahora mismo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS Y LENGUAJES',expand:'ampliar',collapse:'plegar',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositorios públicos analisados',
  gameJump:'¡Salta el trofeo de Taylor!',gameStart:'Toca, haz clic o pulsa Espacio para empezar',gameOver:'Taylor se quedó con el trofeo.',gameBtn:'KANYE SALTA (TOCA / ESPACIO)',hi:'REC',score:'PONTOS',gameFire:'DÉJAME TERMINAR…'}
 };
 const SUP=['en','pt','es'];
@@ -991,12 +1023,27 @@ function renderStacks(langList,repoCount){
   $('stacks-repo-note').textContent=repoCount?`github.com/${CFG.ghUser} · ${repoCount} ${T('publicRepos')}`:`github.com/${CFG.ghUser}`;
 }
 
-$('gh-stack-btn').addEventListener('click',()=>{
-  const card=$('stacks-card'),btn=$('gh-stack-btn');
-  const open=!card.hidden;
-  card.hidden=open;
-  btn.setAttribute('aria-expanded',String(!open));
-});
+function toggleStacks(force){
+  const card=$('stacks-card');
+  const details=$('stacks-details');
+  const btn=$('gh-stack-btn');
+  const lbl=$('stacks-toggle-label');
+  const bar=$('stacks-toggle-bar');
+  if(!card||!details)return;
+  const isCurrentlyOpen=!details.hidden;
+  const nextOpen=typeof force==='boolean'?force:!isCurrentlyOpen;
+  details.hidden=!nextOpen;
+  card.classList.toggle('expanded',nextOpen);
+  if(btn)btn.setAttribute('aria-expanded',String(nextOpen));
+  if(bar)bar.setAttribute('aria-expanded',String(nextOpen));
+  if(lbl)lbl.textContent=nextOpen?T('collapse'):T('expand');
+}
+$('gh-stack-btn')?.addEventListener('click',()=>toggleStacks());
+$('stacks-toggle-bar')?.addEventListener('click',()=>toggleStacks());
+$('stacks-toggle-bar')?.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleStacks();}});
+if(location.hash==='#stacks'||location.hash==='#stacks-card'||location.hash==='#stacks-details'){
+  toggleStacks(true);
+}
 document.querySelectorAll('.stack-mode').forEach(btn=>{
   btn.addEventListener('click',()=>{
     const mode=btn.dataset.mode;
