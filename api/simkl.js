@@ -330,6 +330,60 @@ function hydratePushedLive(liveObj) {
 const S = { acts: null, actsAt: 0, sig: '', P: 0, paused: null, lastDone: null, prevPaused: null, live: null, pushedLive: null, out: null, blockedUntil: 0 };
 const BACKOFF_MS = 20 * 60e3;
 
+const TRAKT_TTL_MS = 5000;
+let traktMemo = { at: 0, val: null };
+
+function mapTraktWatching(d, uid) {
+  const started = Date.parse(d?.started_at || 0);
+  const expires = Date.parse(d?.expires_at || 0);
+  if (!started || !expires || expires <= Date.now()) return null;
+  const isMovie = d.type === 'movie';
+  const media = isMovie ? d.movie : d.show;
+  if (!media?.title) return null;
+  const ep = isMovie ? null : d.episode;
+  const durationSec = Math.max(60, Math.round((expires - started) / 1000));
+  const elapsedSec = Math.max(0, Math.round((Date.now() - started) / 1000));
+  return {
+    live: true,
+    paused: false,
+    title: media.title,
+    type: isMovie ? 'movie' : 'show',
+    imdbId: media.ids?.imdb || null,
+    tmdbId: media.ids?.tmdb || null,
+    season: ep?.season ?? null,
+    number: ep?.number ?? null,
+    episode: ep ? sxe(ep.season, ep.number) : null,
+    episodeTitle: ep?.title || null,
+    watchedAt: new Date(started).toISOString(),
+    startedAt: started,
+    runtimeMin: Math.max(1, Math.round(durationSec / 60)),
+    durationSec,
+    elapsedSec,
+    progress: Math.min(99, Math.round((elapsedSec / durationSec) * 100)),
+    poster: null,
+    url: `https://simkl.com/${uid}/dashboard/`,
+    source: 'trakt-live'
+  };
+}
+
+async function traktLive(uid) {
+  const clientId = envClean(process.env.TRAKT_CLIENT_ID || '');
+  const user = envClean(process.env.TRAKT_USER || '');
+  if (!clientId || !user) return null;
+  if (Date.now() - traktMemo.at < TRAKT_TTL_MS) return traktMemo.val ? mapTraktWatching(traktMemo.raw, uid) : null;
+  let raw = null;
+  try {
+    const r = await fetch(`https://api.trakt.tv/users/${encodeURIComponent(user)}/watching`, {
+      headers: { 'trakt-api-key': clientId, 'trakt-api-version': '2', 'Content-Type': 'application/json', 'User-Agent': UA },
+      signal: AbortSignal.timeout(3500)
+    });
+    if (r.status === 200) raw = await r.json();
+  } catch {}
+  const val = raw ? mapTraktWatching(raw, uid) : null;
+  traktMemo = { at: Date.now(), val, raw };
+  return val;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -608,6 +662,12 @@ export default async function handler(req, res) {
     if (redisLive) {
       diag.picked = 'redis-live-push';
       return reply(redisLive, false);
+    }
+
+    const trakt = await traktLive(uid);
+    if (trakt) {
+      diag.picked = 'trakt-live';
+      return reply(trakt, false);
     }
 
     const scraped = await scrapeLive(uid, diag);

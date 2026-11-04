@@ -159,6 +159,8 @@ a{color:inherit;text-decoration:none}
 .st-pill i{width:6.5px;height:6.5px;border-radius:50%;display:inline-block;flex:none}
 .stacks-details{display:flex;flex-direction:column;gap:16px;padding-top:14px;border-top:1px solid #1a1e2a;margin-top:2px}
 .stacks-details[hidden]{display:none!important}
+.stacks-card[hidden]{display:none!important}
+.stacks-card.expanded .stacks-preview-pills{display:none}
 .stacks-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 22px}
 .stack-cat{display:flex;flex-direction:column;gap:9px}
 .stack-cat-lbl{display:inline-flex;align-items:center;gap:7px;font-size:10.5px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;font-weight:600}
@@ -211,11 +213,11 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
   .stacks-preview-pills{gap:6px}
   .st-pill{font-size:10.5px;padding:3px 7px}
   .stacks-grid{grid-template-columns:minmax(0,1fr);gap:14px}
-  .bible-verse{flex-direction:column;align-items:flex-start;gap:8px;padding:10px 12px;width:100%}
-  .bv-left{width:100%;display:flex;align-items:flex-start;gap:8px}
+  .bible-verse{display:block;padding:10px 12px;width:100%}
+  .bv-left{display:flex;align-items:flex-start;gap:8px;width:100%;flex:none}
   .bv-ico{margin-top:2px;flex:none}
-  .bv-text{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;word-break:break-word;line-height:1.45;font-size:12px}
-  .bv-ref{margin-left:auto;align-self:flex-end}
+  .bv-text{flex:1 1 auto;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;word-break:break-word;overflow-wrap:anywhere;line-height:1.45;font-size:12px}
+  .bv-ref{display:block;margin:8px 0 0;text-align:right;white-space:normal;align-self:auto}
 }
 @media(prefers-reduced-motion:reduce){.pill.live::before,.bgl,.ti-heart{animation:none}.bar span,.bgl{transition:none}}
 </style>
@@ -316,7 +318,7 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
           </div>
         </div>
 
-        <div class="stacks-card" id="stacks-card">
+        <div class="stacks-card" id="stacks-card" hidden>
           <div class="stacks-compact" id="stacks-toggle-bar" role="button" tabindex="0" aria-expanded="false" aria-controls="stacks-details" title="Clique para ampliar / recolher">
             <div class="stacks-head">
               <div class="stacks-brand">
@@ -1030,8 +1032,9 @@ function toggleStacks(force){
   const lbl=$('stacks-toggle-label');
   const bar=$('stacks-toggle-bar');
   if(!card||!details)return;
-  const isCurrentlyOpen=!details.hidden;
+  const isCurrentlyOpen=!card.hidden&&!details.hidden;
   const nextOpen=typeof force==='boolean'?force:!isCurrentlyOpen;
+  card.hidden=!nextOpen;
   details.hidden=!nextOpen;
   card.classList.toggle('expanded',nextOpen);
   if(btn)btn.setAttribute('aria-expanded',String(nextOpen));

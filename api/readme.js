@@ -1,10 +1,38 @@
 import { readFileSync } from 'node:fs';
+import { gzipSync, gunzipSync } from 'node:zlib';
 import musicHandler, { getTrackContext } from './music.js';
 import simklHandler from './simkl.js';
 import activityHandler from './activity.js';
 
 const PROD_ORIGIN = 'https://uwaazy.vercel.app';
 const UA = 'uWaazy-hub-svg/1.5';
+const FRESH_MS = 8000;
+const DEADLINE_MS = 3200;
+const IMG_BUDGET_MS = 1900;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+const envClean = v => String(v || '').trim().replace(/^["'`]+|["'`]+$/g, '').trim();
+let R_URL = envClean(process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL);
+if (R_URL && !/^https?:\/\//i.test(R_URL)) R_URL = 'https://' + R_URL;
+R_URL = R_URL.replace(/\/+$/, '');
+const R_TOK = envClean(process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN);
+async function rcmd(...cmds) {
+  if (!R_URL || !R_TOK) return null;
+  try {
+    const r = await fetch(R_URL + '/pipeline', { method: 'POST', headers: { Authorization: `Bearer ${R_TOK}` }, body: JSON.stringify(cmds), signal: AbortSignal.timeout(1200) });
+    return r.ok ? (await r.json()).map(x => x.result) : null;
+  } catch { return null; }
+}
+const svgMem = new Map();
+const inflight = new Map();
+async function saveLastGood(lang, svg) {
+  await rcmd(['SET', `hub:readme:svg:${lang}`, gzipSync(Buffer.from(svg)).toString('base64'), 'EX', 6 * 3600]);
+}
+async function loadLastGood(lang) {
+  const hit = await rcmd(['GET', `hub:readme:svg:${lang}`]);
+  if (!hit || !hit[0]) return null;
+  try { return gunzipSync(Buffer.from(hit[0], 'base64')).toString('utf8'); } catch { return null; }
+}
 
 let cachedLogoDataUri = null;
 function getLogoDataUri() {
@@ -25,14 +53,18 @@ async function toDataUri(url) {
   if (url.startsWith('assets/logo')) return getLogoDataUri();
   const fullUrl = (url.startsWith('http') ? url : `${PROD_ORIGIN}/${url.replace(/^\/+/, '')}`)
     .replace(/\/\d+x\d+bb\.(jpg|png|webp)/i, '/160x160bb.$1')
-    .replace(/\/i\/u\/300x300\//i, '/i/u/174s/');
+    .replace(/\/i\/u\/300x300\//i, '/i/u/174s/')
+    .replace(/(i\.scdn\.co\/image\/)ab67616d0000b273/i, '$1ab67616d00001e02')
+    .replace(/(i\.scdn\.co\/image\/)ab6761610000e5eb/i, '$1ab6761610000f178')
+    .replace(/(image\.tmdb\.org\/t\/p\/)w(?:500|780|original)/i, '$1w342');
   const hit = imgMemo.get(fullUrl);
-  if (hit && Date.now() - hit.at < 15 * 60e3) return hit.val;
+  if (hit && Date.now() - hit.at < 30 * 60e3) return hit.val;
   try {
     const r = await fetch(fullUrl, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(3500) });
     if (!r.ok) return '';
     const ct = (r.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
     const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length || buf.length > 160000) return '';
     const val = `data:${ct};base64,${buf.toString('base64')}`;
     imgMemo.set(fullUrl, { at: Date.now(), val });
     return val;
@@ -55,13 +87,17 @@ async function runInternal(handlerFn, query = {}) {
   });
 }
 
+const endpointMemo = new Map();
 async function fetchEndpoint(handlerFn, fallbackPath, query = {}) {
-  const internal = await runInternal(handlerFn, query);
+  const internal = await Promise.race([runInternal(handlerFn, query), sleep(2400).then(() => ({ ok: false, data: null, timedOut: true }))]);
   if (internal.ok && internal.data && !internal.data.error && !internal.data.lastfm?.error) {
+    endpointMemo.set(fallbackPath, { at: Date.now(), data: internal.data });
     return internal.data;
   }
+  const memo = endpointMemo.get(fallbackPath);
+  if (memo && Date.now() - memo.at < 10 * 60e3) return memo.data;
   try {
-    const r = await fetch(`${PROD_ORIGIN}${fallbackPath}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000) });
+    const r = await fetch(`${PROD_ORIGIN}${fallbackPath}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(2000) });
     if (r.ok) {
       const prod = await r.json();
       if (fallbackPath === '/api/music' && internal.data?.statsfm?.slides?.length) {
@@ -83,7 +119,7 @@ async function fetchGithubSummary() {
   try {
     const r = await fetch('https://api.github.com/users/uWaazy/events/public?per_page=15', {
       headers: { 'User-Agent': UA },
-      signal: AbortSignal.timeout(4000)
+      signal: AbortSignal.timeout(2000)
     });
     const ev = await r.json();
     if (Array.isArray(ev) && ev.length) {
@@ -281,9 +317,7 @@ function buildSlideLabels(slide, isLf, lang = 'pt') {
   }
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).end();
-  const lang = (req.query?.lang || 'pt').toLowerCase().startsWith('en') ? 'en' : 'pt';
+async function renderSvg(lang) {
   const pt = lang === 'pt';
 
   const [music, simkl, activity, gh] = await Promise.all([
@@ -324,9 +358,12 @@ export default async function handler(req, res) {
   ];
   const uniqueUrls = [...new Set(urlsToFetch.filter(Boolean))];
   const uriMap = new Map();
-  await Promise.all(uniqueUrls.map(async u => {
-    uriMap.set(u, await toDataUri(u));
-  }));
+  await Promise.race([
+    Promise.all(uniqueUrls.map(async u => {
+      uriMap.set(u, await toDataUri(u));
+    })),
+    sleep(IMG_BUDGET_MS)
+  ]);
 
   const logoUri = getLogoDataUri();
   const trackUri = uriMap.get(track?.image) || '';
@@ -599,11 +636,40 @@ export default async function handler(req, res) {
   </a>
 </svg>`;
 
-  res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0');
-  res.setHeader('CDN-Cache-Control', 'no-store');
-  res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  return res.status(200).send ? res.status(200).send(svg) : res.end(svg);
+  return svg;
+}
+
+const PLACEHOLDER = lang => `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="120" viewBox="0 0 760 120"><rect width="760" height="120" rx="20" fill="#0b0c10" stroke="#222633"/><text x="380" y="66" text-anchor="middle" fill="#8a91a6" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="16">${lang === 'pt' ? 'Atualizando…' : 'Updating…'}</text></svg>`;
+
+export default async function handler(req, res) {
+  if (req.method !== 'GET') return res.status(405).end();
+  const lang = (req.query?.lang || 'pt').toLowerCase().startsWith('en') ? 'en' : 'pt';
+  const send = (svg, policy) => {
+    res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+    res.setHeader('Cache-Control', policy);
+    return res.status(200).send(svg);
+  };
+  const FRESH = 'public, max-age=0, s-maxage=8, stale-while-revalidate=25';
+  const STALE = 'public, max-age=0, s-maxage=2, stale-while-revalidate=20';
+
+  const hit = svgMem.get(lang);
+  if (hit && Date.now() - hit.at < FRESH_MS) return send(hit.svg, FRESH);
+
+  let job = inflight.get(lang);
+  if (!job) {
+    job = renderSvg(lang)
+      .then(async svg => {
+        svgMem.set(lang, { at: Date.now(), svg });
+        await saveLastGood(lang, svg);
+        return svg;
+      })
+      .finally(() => inflight.delete(lang));
+    inflight.set(lang, job);
+  }
+  const svg = await Promise.race([job.catch(() => null), sleep(DEADLINE_MS).then(() => null)]);
+  if (svg) return send(svg, FRESH);
+
+  const last = hit?.svg || svgMem.get(lang)?.svg || await loadLastGood(lang);
+  if (last) return send(last, STALE);
+  return send(PLACEHOLDER(lang), 'public, max-age=0, s-maxage=1, stale-while-revalidate=5');
 }
