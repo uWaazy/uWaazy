@@ -391,8 +391,12 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  const stremioParam = req.query?.stremio || (req.url && req.url.includes('/stremio/') ? req.url : null);
-  if (stremioParam === 'manifest' || req.query?.manifest === '1' || (typeof stremioParam === 'string' && stremioParam.includes('manifest.json'))) {
+  const parsedUrl = new URL(req.url || '/', 'https://uwaazy.vercel.app');
+  const stremioParam = req.query?.stremio || parsedUrl.searchParams.get('stremio') || (parsedUrl.pathname.includes('/stremio/') ? parsedUrl.pathname : null);
+  const isManifest = stremioParam === 'manifest' || req.query?.manifest === '1' || parsedUrl.searchParams.get('manifest') === '1'
+    || parsedUrl.pathname.endsWith('/manifest.json') || (typeof stremioParam === 'string' && stremioParam.includes('manifest.json'));
+
+  if (isManifest) {
     res.setHeader('Cache-Control', 'public, max-age=3600');
     return res.status(200).json({
       id: 'community.uwaazy.sync',
@@ -406,12 +410,15 @@ export default async function handler(req, res) {
     });
   }
 
-  const isSubtitles = stremioParam === 'subtitles' || req.query?.subtitles || (typeof stremioParam === 'string' && stremioParam.includes('/subtitles/'));
+  const isSubtitles = stremioParam === 'subtitles' || req.query?.subtitles || parsedUrl.searchParams.get('subtitles')
+    || parsedUrl.pathname.includes('/subtitles/') || (typeof stremioParam === 'string' && stremioParam.includes('/subtitles/'));
+
   if (isSubtitles) {
-    let rawType = String(req.query?.type || '').toLowerCase();
-    let rawId = String(req.query?.id || '');
-    if (!rawId && typeof stremioParam === 'string') {
-      const sm = stremioParam.match(/(?:^|\/)subtitles\/([^/]+)\/([^/]+?)(?:\/([^/]+))?(?:\.json)?$/i);
+    let rawType = String(req.query?.type || parsedUrl.searchParams.get('type') || '').toLowerCase();
+    let rawId = String(req.query?.id || parsedUrl.searchParams.get('id') || '');
+    if (!rawId) {
+      const sm = parsedUrl.pathname.match(/(?:^|\/)subtitles\/([^/]+)\/([^/]+?)(?:\/([^/]+))?(?:\.json)?$/i)
+        || (typeof stremioParam === 'string' && stremioParam.match(/(?:^|\/)subtitles\/([^/]+)\/([^/]+?)(?:\/([^/]+))?(?:\.json)?$/i));
       if (sm) {
         rawType = sm[1].toLowerCase();
         rawId = sm[2];
