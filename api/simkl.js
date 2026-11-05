@@ -526,8 +526,23 @@ export default async function handler(req, res) {
   };
 
   const getPaused = async () => {
-    const playback = await simklGet('/sync/playback');
-    const list = Array.isArray(playback) ? playback : (playback?.data || []);
+    const [shows, movies, fallback] = await Promise.all([
+      simklGet('/sync/playback/shows').catch(() => []),
+      simklGet('/sync/playback/movies').catch(() => []),
+      simklGet('/sync/playback').catch(() => [])
+    ]);
+    const raw = [
+      ...(Array.isArray(shows) ? shows : (shows?.data || [])),
+      ...(Array.isArray(movies) ? movies : (movies?.data || [])),
+      ...(Array.isArray(fallback) ? fallback : (fallback?.data || []))
+    ];
+    const seen = new Set();
+    const list = raw.filter(entry => {
+      const id = entry?.id || entry?.show?.ids?.simkl || entry?.movie?.ids?.simkl;
+      if (id && seen.has(id)) return false;
+      if (id) seen.add(id);
+      return true;
+    });
     diag.playbackCount = list.length;
     return list.map(entry => {
       const media = entry.movie || entry.show || entry.anime;
