@@ -7,8 +7,8 @@ import activityHandler from './activity.js';
 const PROD_ORIGIN = 'https://uwaazy.vercel.app';
 const UA = 'uWaazy-hub-svg/1.5';
 const FRESH_MS = 8000;
-const DEADLINE_MS = 3200;
-const IMG_BUDGET_MS = 1900;
+const DEADLINE_MS = 2300;
+const IMG_BUDGET_MS = 1000;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const envClean = v => String(v || '').trim().replace(/^["'`]+|["'`]+$/g, '').trim();
@@ -23,6 +23,9 @@ async function rcmd(...cmds) {
     return r.ok ? (await r.json()).map(x => x.result) : null;
   } catch { return null; }
 }
+let waitUntilFn = null;
+try { waitUntilFn = (await import('@vercel/functions')).waitUntil || null; } catch {}
+const keepAlive = p => { try { if (waitUntilFn) waitUntilFn(p.catch(() => {})); } catch {} };
 const svgMem = new Map();
 const inflight = new Map();
 async function saveLastGood(lang, svg) {
@@ -89,7 +92,7 @@ async function runInternal(handlerFn, query = {}) {
 
 const endpointMemo = new Map();
 async function fetchEndpoint(handlerFn, fallbackPath, query = {}) {
-  const internal = await Promise.race([runInternal(handlerFn, query), sleep(2400).then(() => ({ ok: false, data: null, timedOut: true }))]);
+  const internal = await Promise.race([runInternal(handlerFn, query), sleep(1700).then(() => ({ ok: false, data: null, timedOut: true }))]);
   if (internal.ok && internal.data && !internal.data.error && !internal.data.lastfm?.error) {
     endpointMemo.set(fallbackPath, { at: Date.now(), data: internal.data });
     return internal.data;
@@ -655,6 +658,7 @@ export default async function handler(req, res) {
   const hit = svgMem.get(lang);
   if (hit && Date.now() - hit.at < FRESH_MS) return send(hit.svg, FRESH);
 
+  const lastGoodP = hit ? Promise.resolve(null) : loadLastGood(lang);
   let job = inflight.get(lang);
   if (!job) {
     job = renderSvg(lang)
@@ -665,11 +669,12 @@ export default async function handler(req, res) {
       })
       .finally(() => inflight.delete(lang));
     inflight.set(lang, job);
+    keepAlive(job);
   }
   const svg = await Promise.race([job.catch(() => null), sleep(DEADLINE_MS).then(() => null)]);
   if (svg) return send(svg, FRESH);
 
-  const last = hit?.svg || svgMem.get(lang)?.svg || await loadLastGood(lang);
+  const last = hit?.svg || svgMem.get(lang)?.svg || await Promise.race([lastGoodP, sleep(300).then(() => null)]);
   if (last) return send(last, STALE);
   return send(PLACEHOLDER(lang), 'public, max-age=0, s-maxage=1, stale-while-revalidate=5');
 }
