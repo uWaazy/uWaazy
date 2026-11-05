@@ -159,14 +159,18 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET') return res.status(405).end();
 
-  const urlPath = (req.query?.path || req.url || '').replace(/^\/+/, '').split('?')[0];
+  const full = (req.url || '').split('?')[0].replace(/\/+$/, '');
+  const qPath = String(req.query?.path || '').replace(/^\/+|\/+$/g, '');
+  const isManifest = qPath === 'manifest.json' || qPath.endsWith('/manifest.json')
+    || full.endsWith('/manifest.json') || full === '/api/stremio' || full === '/stremio'
+    || full === '' || full === '/' || (qPath === '' && (full === '' || full === '/api/stremio' || full === '/stremio'));
 
-  if (!urlPath || urlPath === 'manifest.json' || urlPath.endsWith('/manifest.json')) {
+  if (isManifest) {
     res.setHeader('Cache-Control', 'public, max-age=3600');
     return res.status(200).json(MANIFEST);
   }
 
-  const subMatch = urlPath.match(/(?:^|\/)subtitles\/([^/]+)\/([^/]+?)(?:\/([^/]+))?(?:\.json)?$/i);
+  const subMatch = (qPath || full).match(/(?:^|\/)subtitles\/([^/]+)\/([^/]+?)(?:\/([^/]+))?(?:\.json)?$/i);
   if (subMatch) {
     const rawType = subMatch[1].toLowerCase();
     const rawId = decodeURIComponent(subMatch[2]);
