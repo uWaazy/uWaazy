@@ -541,6 +541,7 @@ function ago(iso){const s=Math.max(0,(Date.now()-new Date(iso))/1e3);
   return rtf.format(-Math.floor(h/24),'day')}
 const mmss=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=String(s%60).padStart(2,'0');return h>0?`${h}:${String(m).padStart(2,'0')}:${sec}`:`${m}:${sec}`};
 const bg=(el,url)=>{if(url){el.style.backgroundImage=`url("${url}")`;el.textContent=''}};
+const bgSafe=(el,url)=>{if(!url)return;const i=new Image();i.onload=()=>{el.style.backgroundImage=`url("${url}")`;el.textContent=''};i.src=url};
 
 const BG={a:true,cur:null,music:null,movie:null,game:null,idx:0};
 function setBg(url){
@@ -930,10 +931,10 @@ function renderGames(d){
     const playedAt=main.endedAt||main.playedAt;
     $('g-meta').textContent=[playedAt?ago(playedAt):T('recently'),main.hours&&`${nf(main.hours)} h ${T('total')}`].filter(Boolean).join(' · ')}
   if(!main){pill.textContent=T('idle');pill.className='pill';$('g-title').textContent=T('noGames');$('g-meta').textContent=T('syncHint');$('g-poster').style.backgroundImage='';$('g-poster').textContent='🎮';return}
-  $('g-title').textContent=main.name;$('g-poster').style.backgroundImage='';$('g-poster').textContent='🎮';bg($('g-poster'),main.cover);
+  $('g-title').textContent=main.name;$('g-poster').style.backgroundImage='';$('g-poster').textContent='🎮';bgSafe($('g-poster'),main.cover);
   if(main.cover){BG.game=main.cover;pickBg()}
   list.slice(0,2).forEach(x=>{const e=document.createElement('div');e.className='mini';
-    const p=document.createElement('div');p.className='poster';p.textContent='🎮';bg(p,x.cover);
+    const p=document.createElement('div');p.className='poster';p.textContent='🎮';bgSafe(p,x.cover);
     const n=document.createElement('div');n.textContent=x.name;const t=document.createElement('span');t.textContent=x.endedAt?ago(x.endedAt):'';
     e.append(p,n,t);more.append(e)});
 }

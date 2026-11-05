@@ -19,6 +19,61 @@ const redis = async cmds => {
 };
 const clean = (v, n = 80) => String(v ?? '').replace(/[\u0000-\u001f<>]/g, '').slice(0, n);
 const cover = (src, id) => (/^steam$/i.test(src) && /^\d{1,10}$/.test(id) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/header.jpg` : null);
+const coverMemo = new Map();
+const normName = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const steamIdOf = url => (String(url || '').match(/\/steam\/apps\/(\d{1,10})\//) || [])[1] || null;
+async function headOk(url) {
+  try {
+    const r = await fetch(url, { method: 'HEAD', headers: { 'User-Agent': 'uWaazy-hub/2.0' }, signal: AbortSignal.timeout(2500) });
+    return r.ok;
+  } catch { return false; }
+}
+async function jsonGet(url, ms = 3000) {
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': 'uWaazy-hub/2.0', Accept: 'application/json' }, signal: AbortSignal.timeout(ms) });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+async function steamHeader(id) {
+  const direct = `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/header.jpg`;
+  if (await headOk(direct)) return direct;
+  const j = await jsonGet(`https://store.steampowered.com/api/appdetails?appids=${id}&filters=basic`);
+  const img = j?.[id]?.data?.header_image;
+  if (img && await headOk(img)) return img;
+  const capsule = `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/capsule_616x353.jpg`;
+  return (await headOk(capsule)) ? capsule : null;
+}
+async function steamSearchId(name) {
+  const j = await jsonGet('https://store.steampowered.com/api/storesearch/?cc=us&l=en&term=' + encodeURIComponent(name));
+  const items = j?.items || [];
+  const want = normName(name);
+  const hit = items.find(i => normName(i.name) === want)
+    || items.find(i => { const n = normName(i.name); return want.length >= 6 && n.length >= 6 && (n.startsWith(want) || want.startsWith(n)); });
+  return hit ? String(hit.id) : null;
+}
+async function lookupCover(game) {
+  const id = steamIdOf(game.cover);
+  if (id) { const v = await steamHeader(id); if (v) return v; }
+  else if (game.cover && await headOk(game.cover)) return game.cover;
+  const found = await steamSearchId(game.name);
+  return found ? await steamHeader(found) : null;
+}
+async function resolveCover(game, { force = false } = {}) {
+  if (!game?.name) return game?.cover || null;
+  const key = normName(game.name);
+  const hit = coverMemo.get(key);
+  if (!force && hit && Date.now() - hit.at < (hit.url ? 12 * 3600e3 : 30 * 60e3)) return hit.url;
+  if (!force && URL_ && TOK) {
+    try {
+      const [c] = await redis([['GET', 'hub:cover:' + key]]);
+      if (c) { const url = c === '-' ? null : c; coverMemo.set(key, { at: Date.now(), url }); return url; }
+    } catch {}
+  }
+  const url = await lookupCover(game);
+  coverMemo.set(key, { at: Date.now(), url });
+  if (URL_ && TOK) { try { await redis([['SET', 'hub:cover:' + key, url || '-', 'EX', url ? 30 * 86400 : 1800]]); } catch {} }
+  return url;
+}
 const ok = (a, b) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
 
 const YGP_USER = (process.env.YGP_USER || 'uWaazy').trim();
@@ -136,6 +191,10 @@ export default async function handler(req, res) {
       }
       const ygp = await fetchYgp();
       const recent = mergeRecent(pushed, ygp.value);
+      await Promise.race([
+        Promise.all([...recent, ...(now ? [now] : [])].map(async g => { g.cover = await resolveCover(g); })),
+        new Promise(r => setTimeout(r, 3500))
+      ]);
       const source = now ? 'playnite-live' : pushed.length ? 'playnite-history' : ygp.value.length ? 'ygp' : 'empty';
       return res.json({ now, recent, source, ...(req.query?.debug === '1' ? { _debug: { ygp: ygp.diag, redis: !(URL_ && TOK) ? 'not configured' : redisError ? 'ERROR: ' + redisError : 'ok', pushed: pushed.length } } : {}) });
     }
@@ -150,6 +209,7 @@ export default async function handler(req, res) {
     const name = clean(b.name);
     if (!name) return res.status(400).json({ error: 'name required' });
     const game = { name, cover: cover(clean(b.source, 20), clean(b.sourceId, 12)) };
+    game.cover = await resolveCover(game, { force: true });
 
     if (b.state === 'playing') {
       const startedAt = new Date(b.startedAt).toString() === 'Invalid Date' ? new Date().toISOString() : new Date(b.startedAt).toISOString();
