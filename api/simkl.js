@@ -391,6 +391,110 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
+  const stremioParam = req.query?.stremio || (req.url && req.url.includes('/stremio/') ? req.url : null);
+  if (stremioParam === 'manifest' || req.query?.manifest === '1' || (typeof stremioParam === 'string' && stremioParam.includes('manifest.json'))) {
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.status(200).json({
+      id: 'community.uwaazy.sync',
+      version: '1.0.0',
+      name: 'uWaazy Live Sync',
+      description: 'Sincroniza o que você assiste em tempo real com o uWaazy Hub.',
+      logo: 'https://uwaazy.vercel.app/assets/simkl.svg',
+      resources: ['subtitles'],
+      types: ['movie', 'series', 'anime'],
+      catalogs: []
+    });
+  }
+
+  const isSubtitles = stremioParam === 'subtitles' || req.query?.subtitles || (typeof stremioParam === 'string' && stremioParam.includes('/subtitles/'));
+  if (isSubtitles) {
+    let rawType = String(req.query?.type || '').toLowerCase();
+    let rawId = String(req.query?.id || '');
+    if (!rawId && typeof stremioParam === 'string') {
+      const sm = stremioParam.match(/(?:^|\/)subtitles\/([^/]+)\/([^/]+?)(?:\/([^/]+))?(?:\.json)?$/i);
+      if (sm) {
+        rawType = sm[1].toLowerCase();
+        rawId = sm[2];
+      }
+    }
+    rawId = decodeURIComponent(rawId).replace(/\.json$/i, '');
+    res.setHeader('Cache-Control', 'no-store');
+
+    if (rawId) {
+      (async () => {
+        try {
+          const parts = rawId.split(':');
+          const mainId = parts[0];
+          const season = parts[1] != null && !Number.isNaN(Number(parts[1])) ? Number(parts[1]) : null;
+          const number = parts[2] != null && !Number.isNaN(Number(parts[2])) ? Number(parts[2]) : null;
+          const kind = rawType === 'series' || season != null || number != null ? 'tv' : 'movie';
+
+          let tmdbId = null;
+          let imdbId = mainId.startsWith('tt') ? mainId : null;
+          let title = mainId;
+          let poster = null;
+          let episodeTitle = null;
+          let runtimeMin = kind === 'tv' ? 25 : 105;
+
+          if (imdbId) {
+            const found = await tmdbGet(`/find/${encodeURIComponent(imdbId)}`, { external_source: 'imdb_id', language: 'en-US' });
+            const list = (kind === 'movie' ? found?.movie_results : found?.tv_results) || found?.tv_results || found?.movie_results || [];
+            if (list.length) tmdbId = list[0].id;
+          } else if (/^\d+$/.test(mainId)) {
+            tmdbId = Number(mainId);
+          }
+
+          const resolved = await resolveTmdbI18n({
+            title: tmdbId ? '' : mainId,
+            type: kind === 'tv' ? 'show' : 'movie',
+            imdbId,
+            tmdbId,
+            season,
+            number
+          });
+
+          if (resolved?.i18n) {
+            const loc = resolved.i18n.en || resolved.i18n.pt || {};
+            if (loc.title) title = loc.title;
+            if (loc.poster) poster = loc.poster;
+            if (loc.episodeTitle) episodeTitle = loc.episodeTitle;
+            if (resolved.tmdbRuntimeMin) runtimeMin = resolved.tmdbRuntimeMin;
+          }
+
+          const startedAt = Date.now();
+          const durationSec = runtimeMin * 60;
+          const livePayload = {
+            live: true,
+            paused: false,
+            title,
+            type: kind === 'tv' ? 'show' : 'movie',
+            season,
+            number,
+            episode: sxe(season, number),
+            episodeTitle,
+            imdbId,
+            tmdbId,
+            watchedAt: new Date(startedAt).toISOString(),
+            startedAt,
+            pushedAt: startedAt,
+            runtimeMin,
+            durationSec,
+            elapsedSec: 0,
+            progress: 0,
+            poster,
+            i18n: resolved?.i18n || null,
+            url: imdbId ? `https://www.imdb.com/title/${imdbId}/` : `https://simkl.com/8094166/dashboard/`,
+            source: 'stremio-live'
+          };
+          S.pushedLive = livePayload;
+          await rcmd(['SET', 'hub:simkl:live', JSON.stringify(livePayload), 'EX', Math.max(3600, durationSec + 900)]);
+        } catch {}
+      })();
+    }
+
+    return res.status(200).json({ subtitles: [] });
+  }
+
   const id = (process.env.SIMKL_CLIENT_ID || '').trim();
   const token = (process.env.SIMKL_TOKEN || '').trim();
   const uid = (process.env.SIMKL_USER_ID || '8094166').trim();

@@ -1,7 +1,9 @@
 {
   "rewrites": [
     { "source": "/readme.svg", "destination": "/api/readme" },
-    { "source": "/stremio/:path*", "destination": "/api/stremio" }
+    { "source": "/stremio/manifest.json", "destination": "/api/simkl?stremio=manifest" },
+    { "source": "/stremio/subtitles/:type/:id*", "destination": "/api/simkl?stremio=subtitles&type=:type&id=:id*" },
+    { "source": "/stremio/:path*", "destination": "/api/simkl?stremio=:path*" }
   ],
   "headers": [
     {
