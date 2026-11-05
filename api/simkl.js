@@ -626,7 +626,31 @@ export default async function handler(req, res) {
     const pick = [S.lastDone, S.paused].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
     diag.picked = pick ? pick.source : null;
     if (!pick) return { live: false, title: null, source: 'empty-history' };
-    return { ...(await finalize(pick, {})), live: false, paused: pick.paused, watchedAt: pick.watchedAt,
+
+    const base = await finalize(pick, {});
+    const isPausedEntry = pick.source === 'sync-playback';
+    const ageSec = pick.watchedAt ? Math.max(0, (Date.now() - ts(pick.watchedAt)) / 1000) : Infinity;
+    const isRecentStream = isPausedEntry && ageSec < 15 * 60 && (pick.progress == null || Number(pick.progress) < 95);
+
+    if (isRecentStream) {
+      const durationSec = base.durationSec || (base.runtimeMin * 60);
+      const baseProgress = Number.isFinite(pick.progress) ? Number(pick.progress) : 0;
+      const baseElapsed = (baseProgress / 100) * durationSec;
+      const elapsedSec = Math.min(durationSec, Math.round(baseElapsed + ageSec));
+      const progress = durationSec > 0 ? Math.min(99, Math.round((elapsedSec / durationSec) * 100)) : baseProgress;
+      diag.picked = 'simkl-playback-live';
+      return {
+        ...base,
+        live: true,
+        paused: false,
+        watchedAt: pick.watchedAt,
+        elapsedSec,
+        progress,
+        source: 'simkl-playback-live'
+      };
+    }
+
+    return { ...base, live: false, paused: pick.paused, watchedAt: pick.watchedAt,
       progress: pick.paused && Number.isFinite(pick.progress) ? pick.progress : null, source: pick.source };
   };
   const rebuild = async (P, W) => {
@@ -644,7 +668,7 @@ export default async function handler(req, res) {
     if ((fromP || fromW) && Date.now() - trig < 3 * 3600e3) {
       const delta = await getDelta(trig - 2 * 60e3, true);
       let cand = null, startProgress = 0;
-      if (delta.length === 1 && delta[0].sid !== lastDone?.sid) {
+      if (delta.length && delta[0].sid !== lastDone?.sid) {
         cand = delta[0];
       }
       if (cand) {
