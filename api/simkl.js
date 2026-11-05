@@ -294,9 +294,10 @@ function hydratePushedLive(liveObj) {
   if (!liveObj || !liveObj.title) return null;
   const startedAt = Number(liveObj.startedAt) || Date.parse(liveObj.watchedAt || 0) || Date.now();
   const pushedAt = Number(liveObj.pushedAt) || startedAt;
-  if (Date.now() - pushedAt > 180e3) return null;
   const runtimeMin = Number(liveObj.runtimeMin) || (liveObj.type === 'movie' ? 105 : 25);
   const totalSec = Number(liveObj.durationSec) > 0 ? Number(liveObj.durationSec) : runtimeMin * 60;
+  const maxPushedAge = liveObj.source === 'stremio-live' ? Math.max(7200e3, (totalSec + 900) * 1000) : 180e3;
+  if (Date.now() - pushedAt > maxPushedAge) return null;
   const elapsedSec = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
   if (elapsedSec > totalSec + 900) return null;
   const baseProg = Number(liveObj.startProgress) || 0;
@@ -698,7 +699,17 @@ export default async function handler(req, res) {
   try {
     const [rawLive, st, last, bl] = (await rcmd(['GET', 'hub:simkl:live'], ['GET', 'hub:simkl:state'], ['GET', 'hub:simkl:last'], ['GET', 'hub:simkl:blocked'])) || [];
     const redisLive = hydratePushedLive(jparse(rawLive) || S.pushedLive);
-    if (redisLive) {
+    if (redisLive && redisLive.source === 'stremio-live' && token) {
+      if (!S.acts || Date.now() - S.actsAt > 10e3) { S.acts = await simklGet('/sync/activities').catch(() => null); S.actsAt = Date.now(); }
+      const a = S.acts;
+      const P = Math.max(ts(a?.tv_shows?.playback), ts(a?.anime?.playback), ts(a?.movies?.playback));
+      if (P > redisLive.startedAt + 30e3) {
+        await rcmd(['DEL', 'hub:simkl:live']);
+      } else {
+        diag.picked = 'redis-live-push';
+        return reply(redisLive, false);
+      }
+    } else if (redisLive) {
       diag.picked = 'redis-live-push';
       return reply(redisLive, false);
     }

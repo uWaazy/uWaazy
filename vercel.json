@@ -1,6 +1,7 @@
 {
   "rewrites": [
-    { "source": "/readme.svg", "destination": "/api/readme" }
+    { "source": "/readme.svg", "destination": "/api/readme" },
+    { "source": "/stremio/:path*", "destination": "/api/stremio?path=:path*" }
   ],
   "headers": [
     {
