@@ -294,10 +294,9 @@ function hydratePushedLive(liveObj) {
   if (!liveObj || !liveObj.title) return null;
   const startedAt = Number(liveObj.startedAt) || Date.parse(liveObj.watchedAt || 0) || Date.now();
   const pushedAt = Number(liveObj.pushedAt) || startedAt;
+  if (Date.now() - pushedAt > 180e3) return null;
   const runtimeMin = Number(liveObj.runtimeMin) || (liveObj.type === 'movie' ? 105 : 25);
   const totalSec = Number(liveObj.durationSec) > 0 ? Number(liveObj.durationSec) : runtimeMin * 60;
-  const maxPushedAge = liveObj.source === 'stremio-live' ? Math.max(7200e3, (totalSec + 900) * 1000) : 180e3;
-  if (Date.now() - pushedAt > maxPushedAge) return null;
   const elapsedSec = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
   if (elapsedSec > totalSec + 900) return null;
   const baseProg = Number(liveObj.startProgress) || 0;
@@ -391,117 +390,6 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  const parsedUrl = new URL(req.url || '/', 'https://uwaazy.vercel.app');
-  const stremioParam = req.query?.stremio || parsedUrl.searchParams.get('stremio') || (parsedUrl.pathname.includes('/stremio/') ? parsedUrl.pathname : null);
-  const isManifest = stremioParam === 'manifest' || req.query?.manifest === '1' || parsedUrl.searchParams.get('manifest') === '1'
-    || parsedUrl.pathname.endsWith('/manifest.json') || (typeof stremioParam === 'string' && stremioParam.includes('manifest.json'));
-
-  if (isManifest) {
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    return res.status(200).json({
-      id: 'community.uwaazy.sync',
-      version: '1.0.0',
-      name: 'uWaazy Live Sync',
-      description: 'Sincroniza o que você assiste em tempo real com o uWaazy Hub.',
-      logo: 'https://uwaazy.vercel.app/assets/simkl.svg',
-      resources: ['subtitles'],
-      types: ['movie', 'series', 'anime'],
-      catalogs: []
-    });
-  }
-
-  const isSubtitles = stremioParam === 'subtitles' || req.query?.subtitles || parsedUrl.searchParams.get('subtitles')
-    || parsedUrl.pathname.includes('/subtitles/') || (typeof stremioParam === 'string' && stremioParam.includes('/subtitles/'));
-
-  if (isSubtitles) {
-    let rawType = String(req.query?.type || parsedUrl.searchParams.get('type') || '').toLowerCase();
-    let rawId = String(req.query?.id || parsedUrl.searchParams.get('id') || '');
-    if (!rawId) {
-      const sm = parsedUrl.pathname.match(/(?:^|\/)subtitles\/([^/]+)\/([^/]+?)(?:\/([^/]+))?(?:\.json)?$/i)
-        || (typeof stremioParam === 'string' && stremioParam.match(/(?:^|\/)subtitles\/([^/]+)\/([^/]+?)(?:\/([^/]+))?(?:\.json)?$/i));
-      if (sm) {
-        rawType = sm[1].toLowerCase();
-        rawId = sm[2];
-      }
-    }
-    rawId = decodeURIComponent(rawId).replace(/\.json$/i, '');
-    res.setHeader('Cache-Control', 'no-store');
-
-    if (rawId) {
-      (async () => {
-        try {
-          const parts = rawId.split(':');
-          const mainId = parts[0];
-          const season = parts[1] != null && !Number.isNaN(Number(parts[1])) ? Number(parts[1]) : null;
-          const number = parts[2] != null && !Number.isNaN(Number(parts[2])) ? Number(parts[2]) : null;
-          const kind = rawType === 'series' || season != null || number != null ? 'tv' : 'movie';
-
-          let tmdbId = null;
-          let imdbId = mainId.startsWith('tt') ? mainId : null;
-          let title = mainId;
-          let poster = null;
-          let episodeTitle = null;
-          let runtimeMin = kind === 'tv' ? 25 : 105;
-
-          if (imdbId) {
-            const found = await tmdbGet(`/find/${encodeURIComponent(imdbId)}`, { external_source: 'imdb_id', language: 'en-US' });
-            const list = (kind === 'movie' ? found?.movie_results : found?.tv_results) || found?.tv_results || found?.movie_results || [];
-            if (list.length) tmdbId = list[0].id;
-          } else if (/^\d+$/.test(mainId)) {
-            tmdbId = Number(mainId);
-          }
-
-          const resolved = await resolveTmdbI18n({
-            title: tmdbId ? '' : mainId,
-            type: kind === 'tv' ? 'show' : 'movie',
-            imdbId,
-            tmdbId,
-            season,
-            number
-          });
-
-          if (resolved?.i18n) {
-            const loc = resolved.i18n.en || resolved.i18n.pt || {};
-            if (loc.title) title = loc.title;
-            if (loc.poster) poster = loc.poster;
-            if (loc.episodeTitle) episodeTitle = loc.episodeTitle;
-            if (resolved.tmdbRuntimeMin) runtimeMin = resolved.tmdbRuntimeMin;
-          }
-
-          const startedAt = Date.now();
-          const durationSec = runtimeMin * 60;
-          const livePayload = {
-            live: true,
-            paused: false,
-            title,
-            type: kind === 'tv' ? 'show' : 'movie',
-            season,
-            number,
-            episode: sxe(season, number),
-            episodeTitle,
-            imdbId,
-            tmdbId,
-            watchedAt: new Date(startedAt).toISOString(),
-            startedAt,
-            pushedAt: startedAt,
-            runtimeMin,
-            durationSec,
-            elapsedSec: 0,
-            progress: 0,
-            poster,
-            i18n: resolved?.i18n || null,
-            url: imdbId ? `https://www.imdb.com/title/${imdbId}/` : `https://simkl.com/8094166/dashboard/`,
-            source: 'stremio-live'
-          };
-          S.pushedLive = livePayload;
-          await rcmd(['SET', 'hub:simkl:live', JSON.stringify(livePayload), 'EX', Math.max(3600, durationSec + 900)]);
-        } catch {}
-      })();
-    }
-
-    return res.status(200).json({ subtitles: [] });
-  }
-
   const id = (process.env.SIMKL_CLIENT_ID || '').trim();
   const token = (process.env.SIMKL_TOKEN || '').trim();
   const uid = (process.env.SIMKL_USER_ID || '8094166').trim();
@@ -538,7 +426,7 @@ export default async function handler(req, res) {
   const debug = req.query?.debug === '1';
   const rawLang = String(req.query?.lang || req.headers['accept-language'] || 'en').slice(0, 2).toLowerCase();
   const reqLang = ['pt', 'en', 'es'].includes(rawLang) ? rawLang : 'en';
-  const diag = { lang: reqLang, reqUrl: req.url, reqQuery: req.query, stremioParam, isManifest, commit: 'diag-check-1' };
+  const diag = { lang: reqLang };
 
   res.setHeader('Cache-Control', debug ? 'no-store' : 'public, s-maxage=6, stale-while-revalidate=15');
   if (req.method !== 'GET') return res.status(405).end();
@@ -638,23 +526,8 @@ export default async function handler(req, res) {
   };
 
   const getPaused = async () => {
-    const [shows, movies, fallback] = await Promise.all([
-      simklGet('/sync/playback/shows').catch(() => []),
-      simklGet('/sync/playback/movies').catch(() => []),
-      simklGet('/sync/playback').catch(() => [])
-    ]);
-    const raw = [
-      ...(Array.isArray(shows) ? shows : (shows?.data || [])),
-      ...(Array.isArray(movies) ? movies : (movies?.data || [])),
-      ...(Array.isArray(fallback) ? fallback : (fallback?.data || []))
-    ];
-    const seen = new Set();
-    const list = raw.filter(entry => {
-      const id = entry?.id || entry?.show?.ids?.simkl || entry?.movie?.ids?.simkl;
-      if (id && seen.has(id)) return false;
-      if (id) seen.add(id);
-      return true;
-    });
+    const playback = await simklGet('/sync/playback');
+    const list = Array.isArray(playback) ? playback : (playback?.data || []);
     diag.playbackCount = list.length;
     return list.map(entry => {
       const media = entry.movie || entry.show || entry.anime;
@@ -753,31 +626,7 @@ export default async function handler(req, res) {
     const pick = [S.lastDone, S.paused].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
     diag.picked = pick ? pick.source : null;
     if (!pick) return { live: false, title: null, source: 'empty-history' };
-
-    const base = await finalize(pick, {});
-    const isPausedEntry = pick.source === 'sync-playback';
-    const ageSec = pick.watchedAt ? Math.max(0, (Date.now() - ts(pick.watchedAt)) / 1000) : Infinity;
-    const isRecentStream = isPausedEntry && ageSec < 15 * 60 && (pick.progress == null || Number(pick.progress) < 95);
-
-    if (isRecentStream) {
-      const durationSec = base.durationSec || (base.runtimeMin * 60);
-      const baseProgress = Number.isFinite(pick.progress) ? Number(pick.progress) : 0;
-      const baseElapsed = (baseProgress / 100) * durationSec;
-      const elapsedSec = Math.min(durationSec, Math.round(baseElapsed + ageSec));
-      const progress = durationSec > 0 ? Math.min(99, Math.round((elapsedSec / durationSec) * 100)) : baseProgress;
-      diag.picked = 'simkl-playback-live';
-      return {
-        ...base,
-        live: true,
-        paused: false,
-        watchedAt: pick.watchedAt,
-        elapsedSec,
-        progress,
-        source: 'simkl-playback-live'
-      };
-    }
-
-    return { ...base, live: false, paused: pick.paused, watchedAt: pick.watchedAt,
+    return { ...(await finalize(pick, {})), live: false, paused: pick.paused, watchedAt: pick.watchedAt,
       progress: pick.paused && Number.isFinite(pick.progress) ? pick.progress : null, source: pick.source };
   };
   const rebuild = async (P, W) => {
@@ -795,7 +644,7 @@ export default async function handler(req, res) {
     if ((fromP || fromW) && Date.now() - trig < 3 * 3600e3) {
       const delta = await getDelta(trig - 2 * 60e3, true);
       let cand = null, startProgress = 0;
-      if (delta.length && delta[0].sid !== lastDone?.sid) {
+      if (delta.length === 1 && delta[0].sid !== lastDone?.sid) {
         cand = delta[0];
       }
       if (cand) {
@@ -810,17 +659,7 @@ export default async function handler(req, res) {
   try {
     const [rawLive, st, last, bl] = (await rcmd(['GET', 'hub:simkl:live'], ['GET', 'hub:simkl:state'], ['GET', 'hub:simkl:last'], ['GET', 'hub:simkl:blocked'])) || [];
     const redisLive = hydratePushedLive(jparse(rawLive) || S.pushedLive);
-    if (redisLive && redisLive.source === 'stremio-live' && token) {
-      if (!S.acts || Date.now() - S.actsAt > 10e3) { S.acts = await simklGet('/sync/activities').catch(() => null); S.actsAt = Date.now(); }
-      const a = S.acts;
-      const P = Math.max(ts(a?.tv_shows?.playback), ts(a?.anime?.playback), ts(a?.movies?.playback));
-      if (P > redisLive.startedAt + 30e3) {
-        await rcmd(['DEL', 'hub:simkl:live']);
-      } else {
-        diag.picked = 'redis-live-push';
-        return reply(redisLive, false);
-      }
-    } else if (redisLive) {
+    if (redisLive) {
       diag.picked = 'redis-live-push';
       return reply(redisLive, false);
     }

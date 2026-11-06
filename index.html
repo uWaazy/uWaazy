@@ -199,6 +199,42 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
 .jump{width:100%;margin-top:12px;padding:15px;border-radius:14px;border:1px solid var(--line);background:var(--card2);color:var(--gold);font:600 13px 'JetBrains Mono',monospace;letter-spacing:.04em;cursor:pointer}
 .jump:active{transform:scale(.98)}
 
+
+.live-wrap{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .5s ease,opacity .4s ease,margin .5s ease;margin:0}
+.live-wrap.show{grid-template-rows:1fr;opacity:1;margin:0 0 16px}
+.live-clip{overflow:hidden;min-height:0}
+.live-card{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"thumb info" "thumb comments";column-gap:14px;row-gap:8px;padding:12px;background:linear-gradient(135deg,rgba(255,60,80,.10),rgba(18,20,27,.9) 55%);border:1px solid rgba(255,90,100,.28);border-radius:16px;box-shadow:0 0 0 1px rgba(255,60,80,.05),0 10px 30px rgba(0,0,0,.35)}
+.live-thumb-col{grid-area:thumb;display:flex;flex-direction:column;gap:7px;width:176px}
+.live-thumb{position:relative;display:block;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#0d0f15}
+.live-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.live-badge{position:absolute;left:6px;top:6px;display:inline-flex;align-items:center;gap:5px;padding:2px 7px 2px 6px;border-radius:6px;background:#e5252b;color:#fff;font-size:10px;letter-spacing:.08em}
+.live-badge i{width:6px;height:6px;border-radius:50%;background:#fff;animation:livepulse 1.4s ease-in-out infinite}
+@keyframes livepulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+.live-others{display:flex;gap:6px;align-items:center;min-height:0}
+.live-others:empty{display:none}
+.live-others a{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#171a24;border:1px solid var(--line);transition:transform .2s,border-color .2s}
+.live-others a:hover{transform:translateY(-1px);border-color:#3a4157}
+.live-others img{width:14px;height:14px}
+.live-info{grid-area:info;min-width:0;display:flex;flex-direction:column;gap:4px}
+.live-meta{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted)}
+.live-meta img{width:16px;height:16px}
+.live-meta span:empty{display:none}
+.live-title{font-size:16px;line-height:1.25;font-weight:700;color:#fff;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.live-title:hover{text-decoration:underline}
+.live-game{font-size:12px;color:#c4b5fd;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live-game:empty{display:none}
+.live-comments{grid-area:comments;min-width:0;display:flex;flex-direction:column;gap:3px;align-self:end}
+.live-c{display:flex;align-items:center;gap:7px;font-size:12px;min-width:0;color:#aab3c8;animation:insIn .4s ease both}
+.live-c img{width:13px;height:13px;flex:none}
+.live-c b{color:#fff;font-weight:700;flex:none;max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.live-c span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:560px){
+  .live-card{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"thumb info" "comments comments";padding:10px;column-gap:10px}
+  .live-thumb-col{width:116px}
+  .live-title{font-size:14px}
+  .live-comments{align-self:start}
+}
+@media(prefers-reduced-motion:reduce){.live-wrap{transition:none}}
 @media(min-width:561px) and (max-width:899px){.track-art{width:102px;height:102px}.frame{min-height:132px}}
 @media(min-width:900px){.hub{max-width:860px}.player{grid-template-columns:minmax(0,1fr) 256px;gap:16px}.album-chip img{width:56px;height:56px}.who h1{font-size:36px}.avatar{width:72px;height:72px}}
 @media(max-width:560px){
@@ -237,6 +273,25 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
   </header>
 
   <section id="p-wagner" class="panel on" role="tabpanel">
+    <div class="live-wrap" id="live-wrap" aria-hidden="true" inert>
+      <div class="live-clip">
+        <div class="live-card" id="live-card">
+          <div class="live-thumb-col">
+            <a class="live-thumb" id="live-thumb-link" href="#" target="_blank" rel="noopener" tabindex="-1">
+              <img id="live-thumb" alt="" referrerpolicy="no-referrer">
+              <span class="live-badge"><i></i><b id="live-badge-t">LIVE</b></span>
+            </a>
+            <div class="live-others" id="live-others"></div>
+          </div>
+          <div class="live-info">
+            <div class="live-meta"><img id="live-plat" alt=""><span id="live-viewers"></span></div>
+            <a class="live-title" id="live-title" href="#" target="_blank" rel="noopener"></a>
+            <div class="live-game" id="live-game"></div>
+          </div>
+          <div class="live-comments" id="live-comments"></div>
+        </div>
+      </div>
+    </div>
     <div class="sec">
       <div class="lbl"><span data-i18n="listening">Listening</span></div>
       <div class="player">
@@ -425,7 +480,7 @@ const CFG={simklApi:'/api/simkl',localSimkl:isLocalHost?'http://127.0.0.1:18095/
 const $=id=>document.getElementById(id);
 
 const I18N={
-en:{listening:'Listening',watching:'Watching',playing:'Playing',open:'open ↗',onYgp:'on Your Gamer Profile',onGh:'on GitHub',
+en:{liveNow:'LIVE',listening:'Listening',watching:'Watching',playing:'Playing',open:'open ↗',onYgp:'on Your Gamer Profile',onGh:'on GitHub',
  nowListening:'Listening now',lastTrack:'Last track',noTrack:'No recent track',noScrobbles:'No recent scrobbles yet',lfLoading:'Loading Last.fm…',lfChecking:'Checking recent scrobbles',lfDown:'Last.fm temporarily unavailable',retrying:'Retrying automatically',
  lfTotalLabel:'Last.fm · total scrobbles',lfTrack7d:'Last.fm · top track / week',lfAlbum7d:'Last.fm · top album / week',lfArtist7d:'Last.fm · top artist / week',lfTop:'Last.fm · top album / 6 mos',lfAlbumAll:'Last.fm · top album / total',lfTrackAll:'Last.fm · top track / total',lfArtist1y:'Last.fm · top artist / 1 year',lfArtistAll:'Last.fm · top artist / total',lfLoved:'Last.fm · loved tracks',lovedWord:'loved tracks',inProfile:'scrobbles in profile',lastWeek:'last 7 days',lastYear:'last 12 months',allTime:'all time',
  sfTotalLabel:'stats.fm · total streams',sfTrack7d:'stats.fm · top track / week',sfAlbum7d:'stats.fm · top album / week',sfArtist7d:'stats.fm · top artist / week',sfTop:'stats.fm · top album / 4 wks',sfTrack4w:'stats.fm · top track / 4 wks',sfArtist4w:'stats.fm · top artist / 4 wks',sfAlbumAll:'stats.fm · top album / total',sfArtistAll:'stats.fm · top artist / total',sfGenre4w:'stats.fm · top genre / 4 wks',sfPlaylist4w:'stats.fm · top playlist / 4 wks',
@@ -437,7 +492,7 @@ en:{listening:'Listening',watching:'Watching',playing:'Playing',open:'open ↗',
  playingNow:'Playing now',lastPlayed:'Last played',idle:'Idle',session:'Session',total:'total',recently:'Recently played',noGames:'No recent games',syncHint:'Sync your Playnite library to show play history',
  ghLatest:'Latest activity',ghProfile:'GitHub profile',justNow:'just now',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS & LANGUAGES',expand:'expand',collapse:'collapse',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'public repositories analyzed',
  gameJump:"Jump over Taylor's trophy!",gameStart:'Tap, click or press Space to start',gameOver:'Taylor had the trophy.',gameBtn:'KANYE JUMP (TAP / SPACE)',hi:'HI',score:'SCORE',gameFire:'IMMA LET YOU FINISH…'},
-pt:{listening:'Ouvindo',watching:'Assistindo',playing:'Jogando',open:'abrir ↗',onYgp:'no Your Gamer Profile',onGh:'no GitHub',
+pt:{liveNow:'AO VIVO',listening:'Ouvindo',watching:'Assistindo',playing:'Jogando',open:'abrir ↗',onYgp:'no Your Gamer Profile',onGh:'no GitHub',
  nowListening:'Ouvindo agora',lastTrack:'Última música',noTrack:'Nenhuma música recente',noScrobbles:'Ainda sem scrobbles recentes',lfLoading:'Carregando Last.fm…',lfChecking:'Verificando scrobbles recentes',lfDown:'Last.fm indisponível no momento',retrying:'Tentando de novo automaticamente',
  lfTotalLabel:'Last.fm · total de scrobbles',lfTrack7d:'Last.fm · top música / semana',lfAlbum7d:'Last.fm · top álbum / semana',lfArtist7d:'Last.fm · top artista / semana',lfTop:'Last.fm · top álbum / 6 meses',lfAlbumAll:'Last.fm · top álbum / total',lfTrackAll:'Last.fm · top música / total',lfArtist1y:'Last.fm · top artista / 1 ano',lfArtistAll:'Last.fm · top artista / total',lfLoved:'Last.fm · faixas favoritas',lovedWord:'favoritas',inProfile:'scrobbles no perfil',lastWeek:'últimos 7 dias',lastYear:'último 1 ano',allTime:'todo o perfil',
  sfTotalLabel:'stats.fm · total de streams',sfTrack7d:'stats.fm · top música / semana',sfAlbum7d:'stats.fm · top álbum / semana',sfArtist7d:'stats.fm · top artista / semana',sfTop:'stats.fm · top álbum / 4 sem.',sfTrack4w:'stats.fm · top música / 4 sem.',sfArtist4w:'stats.fm · top artista / 4 sem.',sfAlbumAll:'stats.fm · top álbum / total',sfArtistAll:'stats.fm · top artista / total',sfGenre4w:'stats.fm · top gênero / 4 sem.',sfPlaylist4w:'stats.fm · top playlist / 4 sem.',
@@ -449,7 +504,7 @@ pt:{listening:'Ouvindo',watching:'Assistindo',playing:'Jogando',open:'abrir ↗'
  playingNow:'Jogando agora',lastPlayed:'Último jogado',idle:'Ocioso',session:'Sessão',total:'no total',recently:'Jogado recentemente',noGames:'Nenhum jogo recente',syncHint:'Sincronize sua biblioteca do Playnite para ver o histórico',
  ghLatest:'Atividade recente',ghProfile:'Perfil do GitHub',justNow:'agora mesmo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS & LINGUAGENS',expand:'ampliar',collapse:'recolher',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositórios públicos analisados',
  gameJump:'Pule o troféu da Taylor!',gameStart:'Toque, clique ou aperte Espaço para começar',gameOver:'A Taylor ficou com o troféu.',gameBtn:'KANYE PULA (TOQUE / ESPAÇO)',hi:'REC',score:'PONTOS',gameFire:'DEIXA EU TERMINAR…'},
-es:{listening:'Escuchando',watching:'Viendo',playing:'Jugando',open:'abrir ↗',onYgp:'en Your Gamer Profile',onGh:'en GitHub',
+es:{liveNow:'EN VIVO',listening:'Escuchando',watching:'Viendo',playing:'Jugando',open:'abrir ↗',onYgp:'en Your Gamer Profile',onGh:'en GitHub',
  nowListening:'Escuchando ahora',lastTrack:'Última canción',noTrack:'Sin canciones recientes',noScrobbles:'Aún sin scrobbles recientes',lfLoading:'Cargando Last.fm…',lfChecking:'Revisando scrobbles recientes',lfDown:'Last.fm no disponible por ahora',retrying:'Reintentando automáticamente',
  lfTotalLabel:'Last.fm · total de scrobbles',lfTrack7d:'Last.fm · top canción / semana',lfAlbum7d:'Last.fm · top álbum / semana',lfArtist7d:'Last.fm · top artista / semana',lfTop:'Last.fm · top álbum / 6 meses',lfAlbumAll:'Last.fm · top álbum / total',lfTrackAll:'Last.fm · top canción / total',lfArtist1y:'Last.fm · top artista / 1 año',lfArtistAll:'Last.fm · top artista / total',lfLoved:'Last.fm · canciones favoritas',lovedWord:'favoritas',inProfile:'scrobbles en el perfil',lastWeek:'últimos 7 días',lastYear:'último año',allTime:'histórico',
  sfTotalLabel:'stats.fm · total de streams',sfTrack7d:'stats.fm · top canción / semana',sfAlbum7d:'stats.fm · top álbum / semana',sfArtist7d:'stats.fm · top artista / semana',sfTop:'stats.fm · top álbum / 4 sem.',sfTrack4w:'stats.fm · top canción / 4 sem.',sfArtist4w:'stats.fm · top artista / 4 sem.',sfAlbumAll:'stats.fm · top álbum / total',sfArtistAll:'stats.fm · top artista / total',sfGenre4w:'stats.fm · top género / 4 sem.',sfPlaylist4w:'stats.fm · top playlist / 4 sem.',
@@ -1116,11 +1171,60 @@ async function loadGithub(){
   }catch{renderGithub(c?c.d:null)}
 }
 
+
+const PLAT={youtube:{name:'YouTube',slug:'youtube',color:'FF0000'},twitch:{name:'Twitch',slug:'twitch',color:'9146FF'},kick:{name:'Kick',slug:'kick',color:'53FC18'},tiktok:{name:'TikTok',slug:'tiktok',color:'FFFFFF'}};
+const platIcon=k=>`https://cdn.simpleicons.org/${PLAT[k].slug}/${PLAT[k].color}`;
+const LIVE={shown:false};
+function setLiveThumb(img,main,fallback){
+  img.onerror=()=>{img.onerror=null;if(fallback&&img.getAttribute('src')!==fallback)img.src=fallback;else img.removeAttribute('src')};
+  const want=main||fallback||'';
+  if(img.getAttribute('src')!==want)img.src=want;
+}
+function renderLive(d){
+  const wrap=$('live-wrap'),f=d&&d.live?d.featured:null;
+  if(!f||!PLAT[f.platform]){
+    if(LIVE.shown){LIVE.shown=false;wrap.classList.remove('show');wrap.setAttribute('aria-hidden','true');wrap.inert=true}
+    return;
+  }
+  $('live-badge-t').textContent=T('liveNow');
+  setLiveThumb($('live-thumb'),f.thumb,f.thumbFallback);
+  $('live-thumb-link').href=f.url;$('live-title').href=f.url;
+  $('live-title').textContent=f.title||`${PLAT[f.platform].name} · ${T('liveNow')}`;
+  $('live-game').textContent=f.game||f.category||'';
+  const pi=$('live-plat');pi.src=platIcon(f.platform);pi.alt=PLAT[f.platform].name;pi.title=PLAT[f.platform].name;
+  $('live-viewers').textContent=f.viewers!=null?`● ${nf(f.viewers)}`:'';
+  const oth=$('live-others');oth.replaceChildren();
+  (d.others||[]).forEach(o=>{
+    if(!PLAT[o.platform])return;
+    const a=document.createElement('a');a.href=o.url;a.target='_blank';a.rel='noopener';a.title=`${PLAT[o.platform].name}${o.title?' · '+o.title:''}`;a.setAttribute('aria-label',a.title);
+    const im=document.createElement('img');im.alt='';im.src=platIcon(o.platform);a.append(im);oth.append(a);
+  });
+  const box=$('live-comments');box.replaceChildren();
+  (d.comments||[]).forEach(c=>{
+    if(!PLAT[c.platform])return;
+    const row=document.createElement('div');row.className='live-c';
+    const ic=document.createElement('img');ic.alt=PLAT[c.platform].name;ic.title=PLAT[c.platform].name;ic.src=platIcon(c.platform);
+    const who=document.createElement('b');who.textContent=c.author;
+    const tx=document.createElement('span');tx.textContent=c.text;
+    row.append(ic,who,tx);box.append(row);
+  });
+  if(!LIVE.shown){LIVE.shown=true;wrap.inert=false;wrap.setAttribute('aria-hidden','false');requestAnimationFrame(()=>wrap.classList.add('show'))}
+}
+const DEMO_LIVE={live:true,featured:{platform:'youtube',channel:'uwaazy',url:'https://www.youtube.com/@uwaazy',title:'Rally no Le Mans Ultimate — corrida valendo!',thumb:null,game:'Le Mans Ultimate',viewers:128},others:[{platform:'twitch',url:'https://www.twitch.tv/uwaazy'},{platform:'kick',url:'https://kick.com/uwaazy'}],comments:[{platform:'youtube',author:'Rafa',text:'que corrida boa!'},{platform:'twitch',author:'Mari',text:'manda salve pro chat'},{platform:'tiktok',author:'jota',text:'primeira vez aqui, curti'}]};
+async function loadLive(){
+  try{
+    if(Q.has('livedemo')){renderLive(DEMO_LIVE);return}
+    const r=await fetch('/api/live',{cache:'no-store'});
+    if(!r.ok)return;
+    renderLive(await r.json());
+  }catch{}
+}
+
 initTexts();
-loadMusic();loadWatch();loadGames();loadGithub();loadGithubStacks();
+loadMusic();loadWatch();loadGames();loadLive();loadGithub();loadGithubStacks();
 setInterval(refreshLastfmPlayback,10e3);setInterval(loadMusic,15*60e3);
-setInterval(()=>{if(!document.hidden)loadWatch()},12e3);setInterval(()=>{if(!document.hidden)loadGames()},3e4);setInterval(loadGithub,10*60e3);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){loadWatch();loadGames();renderDailyVerse()}});
+setInterval(()=>{if(!document.hidden)loadWatch()},12e3);setInterval(()=>{if(!document.hidden)loadGames()},3e4);setInterval(loadGithub,10*60e3);setInterval(()=>{if(!document.hidden)loadLive()},20e3);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){loadWatch();loadGames();loadLive();renderDailyVerse()}});
 
 const SFX=(function(){
   let ctx=null,bufAllDay=null,bufBey=null,loading=false;
