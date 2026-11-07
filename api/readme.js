@@ -7,8 +7,11 @@ import activityHandler from './activity.js';
 const PROD_ORIGIN = 'https://uwaazy.vercel.app';
 const UA = 'uWaazy-hub-svg/1.5';
 const FRESH_MS = 8000;
-const DEADLINE_MS = 2300;
-const IMG_BUDGET_MS = 1000;
+const DEADLINE_MS = 1600;
+const IMG_BUDGET_MS = 800;
+const STALE_FIRST_MS = 45000;
+const LAST_GOOD_TTL = 6 * 3600;
+const CHUNK = 380000;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const envClean = v => String(v || '').trim().replace(/^["'`]+|["'`]+$/g, '').trim();
@@ -19,7 +22,7 @@ const R_TOK = envClean(process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_RE
 async function rcmd(...cmds) {
   if (!R_URL || !R_TOK) return null;
   try {
-    const r = await fetch(R_URL + '/pipeline', { method: 'POST', headers: { Authorization: `Bearer ${R_TOK}` }, body: JSON.stringify(cmds), signal: AbortSignal.timeout(1200) });
+    const r = await fetch(R_URL + '/pipeline', { method: 'POST', headers: { Authorization: `Bearer ${R_TOK}` }, body: JSON.stringify(cmds), signal: AbortSignal.timeout(2500) });
     return r.ok ? (await r.json()).map(x => x.result) : null;
   } catch { return null; }
 }
@@ -29,12 +32,21 @@ const keepAlive = p => { try { if (waitUntilFn) waitUntilFn(p.catch(() => {})); 
 const svgMem = new Map();
 const inflight = new Map();
 async function saveLastGood(lang, svg) {
-  await rcmd(['SET', `hub:readme:svg:${lang}`, gzipSync(Buffer.from(svg)).toString('base64'), 'EX', 6 * 3600]);
+  if (!R_URL || !R_TOK) return;
+  const blob = gzipSync(Buffer.from(svg)).toString('base64');
+  const parts = [];
+  for (let i = 0; i < blob.length; i += CHUNK) parts.push(blob.slice(i, i + CHUNK));
+  await Promise.all(parts.map((part, i) => rcmd(['SET', `hub:readme:part:${lang}:${i}`, part, 'EX', LAST_GOOD_TTL])));
+  await rcmd(['SET', `hub:readme:meta:${lang}`, JSON.stringify({ n: parts.length, at: Date.now() }), 'EX', LAST_GOOD_TTL]);
 }
 async function loadLastGood(lang) {
-  const hit = await rcmd(['GET', `hub:readme:svg:${lang}`]);
-  if (!hit || !hit[0]) return null;
-  try { return gunzipSync(Buffer.from(hit[0], 'base64')).toString('utf8'); } catch { return null; }
+  const m = await rcmd(['GET', `hub:readme:meta:${lang}`]);
+  let meta = null;
+  try { meta = m && m[0] ? JSON.parse(m[0]) : null; } catch {}
+  if (!meta || !meta.n) return null;
+  const got = await rcmd(...Array.from({ length: meta.n }, (_, i) => ['GET', `hub:readme:part:${lang}:${i}`]));
+  if (!got || got.some(x => !x)) return null;
+  try { return { at: Number(meta.at) || 0, svg: gunzipSync(Buffer.from(got.join(''), 'base64')).toString('utf8') }; } catch { return null; }
 }
 
 let cachedLogoDataUri = null;
@@ -59,7 +71,7 @@ async function toDataUri(url) {
     .replace(/\/i\/u\/300x300\//i, '/i/u/174s/')
     .replace(/(i\.scdn\.co\/image\/)ab67616d0000b273/i, '$1ab67616d00001e02')
     .replace(/(i\.scdn\.co\/image\/)ab6761610000e5eb/i, '$1ab6761610000f178')
-    .replace(/(image\.tmdb\.org\/t\/p\/)w(?:500|780|original)/i, '$1w342');
+    .replace(/(image\.tmdb\.org\/t\/p\/)w(?:342|500|780|original)/i, '$1w185');
   const hit = imgMemo.get(fullUrl);
   if (hit && Date.now() - hit.at < 30 * 60e3) return hit.val;
   try {
@@ -92,7 +104,7 @@ async function runInternal(handlerFn, query = {}) {
 
 const endpointMemo = new Map();
 async function fetchEndpoint(handlerFn, fallbackPath, query = {}) {
-  const internal = await Promise.race([runInternal(handlerFn, query), sleep(1700).then(() => ({ ok: false, data: null, timedOut: true }))]);
+  const internal = await Promise.race([runInternal(handlerFn, query), sleep(1400).then(() => ({ ok: false, data: null, timedOut: true }))]);
   if (internal.ok && internal.data && !internal.data.error && !internal.data.lastfm?.error) {
     endpointMemo.set(fallbackPath, { at: Date.now(), data: internal.data });
     return internal.data;
@@ -629,12 +641,12 @@ async function renderSvg(lang) {
   <text x="88" y="687" fill="#8a91a6" font-size="11.5">${esc([gh.repo, gh.at ? agoText(gh.at, lang) : ''].filter(Boolean).join(' · '))}</text>
   <text x="722" y="668" text-anchor="end" fill="#22d3ee" font-size="13">${pt ? 'abrir ↗' : 'open ↗'}</text>
 
-  <a href="${PROD_ORIGIN}#stacks" target="_blank">
+  <a href="${PROD_ORIGIN}" target="_blank">
     <rect x="22" y="710" width="716" height="90" rx="14" fill="#0e1016" stroke="#222633"/>
     <rect x="36" y="723" width="3.5" height="30" rx="1.75" fill="#8b5cf6"/>
     <text x="48" y="734" fill="#8a91a6" font-size="9.5" font-weight="600" letter-spacing="2" class="mono">DEVELOPER STACK</text>
     <text x="48" y="751" fill="#ffffff" font-size="15" font-weight="700" letter-spacing="0.8">STACKS &amp; LANGUAGES</text>
-    <text x="722" y="751" text-anchor="end" fill="#8a91a6" font-size="11.5" class="mono">${pt ? 'ampliar ↗' : 'expand ↗'}</text>
+    <text x="722" y="751" text-anchor="end" fill="#8a91a6" font-size="11.5" class="mono">${pt ? 'abrir ↗' : 'open ↗'}</text>
     ${stacksSvg}
   </a>
 </svg>`;
@@ -652,13 +664,13 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', policy);
     return res.status(200).send(svg);
   };
-  const FRESH = 'public, max-age=0, s-maxage=8, stale-while-revalidate=25';
-  const STALE = 'public, max-age=0, s-maxage=2, stale-while-revalidate=20';
+  const FRESH = 'public, max-age=0, s-maxage=10, stale-while-revalidate=60';
+  const STALE = 'public, max-age=0, s-maxage=5, stale-while-revalidate=60';
 
   const hit = svgMem.get(lang);
   if (hit && Date.now() - hit.at < FRESH_MS) return send(hit.svg, FRESH);
 
-  const lastGoodP = hit ? Promise.resolve(null) : loadLastGood(lang);
+  const lastGoodP = hit ? Promise.resolve(hit) : loadLastGood(lang);
   let job = inflight.get(lang);
   if (!job) {
     job = renderSvg(lang)
@@ -671,10 +683,15 @@ export default async function handler(req, res) {
     inflight.set(lang, job);
     keepAlive(job);
   }
+
+  const lastGood = await Promise.race([lastGoodP, sleep(800).then(() => null)]);
+  if (lastGood && (!svgMem.get(lang) || svgMem.get(lang).at < lastGood.at)) svgMem.set(lang, lastGood);
+  const stale = svgMem.get(lang) || lastGood || hit;
+  if (stale && Date.now() - stale.at < STALE_FIRST_MS) return send(stale.svg, STALE);
+
   const svg = await Promise.race([job.catch(() => null), sleep(DEADLINE_MS).then(() => null)]);
   if (svg) return send(svg, FRESH);
-
-  const last = hit?.svg || svgMem.get(lang)?.svg || await Promise.race([lastGoodP, sleep(300).then(() => null)]);
-  if (last) return send(last, STALE);
+  const fallback = svgMem.get(lang) || stale;
+  if (fallback) return send(fallback.svg, STALE);
   return send(PLACEHOLDER(lang), 'public, max-age=0, s-maxage=1, stale-while-revalidate=5');
 }

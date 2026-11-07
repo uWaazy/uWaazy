@@ -139,6 +139,8 @@ a{color:inherit;text-decoration:none}
 .gh-sub{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gh-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
 .gh-stack-btn{background:#0e1016;border:1px solid #2b3042;color:var(--text);font:600 11.5px 'Space Grotesk',sans-serif;padding:6px 11px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.2s}
+.gh-stack-btn.nudge{animation:stackNudge .8s ease 2}
+@keyframes stackNudge{0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,0)}50%{box-shadow:0 0 0 6px rgba(139,92,246,.35)}}
 .gh-stack-btn:hover,.gh-stack-btn[aria-expanded=true]{border-color:var(--purple);color:#d8b4fe;background:rgba(139,92,246,.12)}
 .gh em{font-style:normal;color:var(--cyan);font-size:13px;white-space:nowrap}
 
@@ -1101,7 +1103,9 @@ $('gh-stack-btn')?.addEventListener('click',()=>toggleStacks());
 $('stacks-toggle-bar')?.addEventListener('click',()=>toggleStacks());
 $('stacks-toggle-bar')?.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleStacks();}});
 if(location.hash==='#stacks'||location.hash==='#stacks-card'||location.hash==='#stacks-details'){
-  toggleStacks(true);
+  history.replaceState(null,'',location.pathname+location.search);
+  const b=$('gh-stack-btn');
+  if(b){b.scrollIntoView({block:'center'});b.classList.add('nudge');setTimeout(()=>b.classList.remove('nudge'),1600)}
 }
 document.querySelectorAll('.stack-mode').forEach(btn=>{
   btn.addEventListener('click',()=>{
