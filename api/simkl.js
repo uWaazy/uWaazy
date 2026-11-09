@@ -434,14 +434,20 @@ export default async function handler(req, res) {
 
   const headers = { 'User-Agent': UA, 'simkl-api-key': id, 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
   let apiCalls = 0;
-  async function simklGet(path, params = {}) {
+  async function simklGet(path, params = {}, withAuth = true) {
     const url = new URL(`https://api.simkl.com${path}`);
     url.searchParams.set('client_id', id);
     url.searchParams.set('app-name', APP_NAME);
     url.searchParams.set('app-version', APP_VERSION);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
     apiCalls++;
-    const r = await fetch(url, { headers, signal: AbortSignal.timeout(9000) });
+    const callHeaders = {
+      'User-Agent': UA,
+      'simkl-api-key': id,
+      'Content-Type': 'application/json',
+      ...(withAuth && token ? { Authorization: `Bearer ${token}` } : {})
+    };
+    const r = await fetch(url, { headers: callHeaders, signal: AbortSignal.timeout(9000) });
     const body = await r.text();
     let data; try { data = body ? JSON.parse(body) : null; } catch { data = body; }
     if (!r.ok) {
@@ -451,6 +457,37 @@ export default async function handler(req, res) {
       throw err;
     }
     return data;
+  }
+  async function getPublicRecent() {
+    try {
+      const recent = await simklGet(`/users/recently-watched-background/${encodeURIComponent(uid)}`, {}, false);
+      const media = recent?.movie || recent?.show || recent?.anime || recent;
+      if (!media?.title) return null;
+      const type = recent?.movie ? 'movie' : recent?.anime ? 'anime' : 'show';
+      const rtMin = Number(media.runtime) || (type === 'movie' ? 110 : 25);
+      return {
+        live: false,
+        paused: false,
+        title: media.title,
+        type,
+        sid: media?.ids?.simkl,
+        imdbId: media?.ids?.imdb,
+        tmdbId: media?.ids?.tmdb,
+        season: recent?.episode?.season ?? null,
+        number: recent?.episode?.number ?? null,
+        episode: recent?.episode ? sxe(recent.episode.season, recent.episode.number) : null,
+        episodeTitle: recent?.episode?.title || null,
+        watchedAt: toIso(recent?.last_watched_at || recent?.watched_at),
+        runtimeMin: rtMin,
+        durationSec: rtMin * 60,
+        poster: posterUrl(media.poster),
+        url: recent?.url || simklUrl(type, media),
+        source: 'public-recent'
+      };
+    } catch (e) {
+      diag.publicRecentError = e?.message;
+      return null;
+    }
   }
   const simklUrl = (type, media) => {
     const sid = media?.ids?.simkl || media?.ids?.simkl_id;
@@ -678,17 +715,9 @@ export default async function handler(req, res) {
     }
 
     if (!token) {
-      const recent = await simklGet(`/users/recently-watched-background/${encodeURIComponent(uid)}`);
-      const media = recent?.movie || recent?.show || recent?.anime || recent;
-      if (!media?.title) return reply({ live: false, title: null, source: 'empty-history' });
-      const type = recent?.movie ? 'movie' : recent?.anime ? 'anime' : 'show';
-      const rtMin = Number(media.runtime) || (type === 'movie' ? 110 : 25);
-      return reply({ live: false, paused: false, title: media.title, type,
-        sid: media?.ids?.simkl, imdbId: media?.ids?.imdb, tmdbId: media?.ids?.tmdb,
-        season: recent?.episode?.season ?? null, number: recent?.episode?.number ?? null,
-        episode: recent?.episode ? sxe(recent.episode.season, recent.episode.number) : null,
-        watchedAt: toIso(recent?.last_watched_at || recent?.watched_at), runtimeMin: rtMin, durationSec: rtMin * 60,
-        poster: posterUrl(media.poster), url: recent?.url || simklUrl(type, media), source: 'public-recent' });
+      const pub = await getPublicRecent();
+      if (!pub) return reply({ live: false, title: null, source: 'empty-history' });
+      return reply(pub, true);
     }
 
     if (!S.loaded) {
@@ -720,9 +749,17 @@ export default async function handler(req, res) {
     diag.apiCalls = apiCalls;
     return reply(out);
   } catch (error) {
+    diag.error = error?.message || String(error);
+    diag.errorStatus = error?.status || null;
     if (error?.status === 429 || error?.status === 412) {
       S.blockedUntil = Date.now() + BACKOFF_MS;
       await rcmd(['SET', 'hub:simkl:blocked', String(S.blockedUntil), 'EX', Math.ceil(BACKOFF_MS / 1000)]);
+    }
+    const pub = await getPublicRecent();
+    if (pub) {
+      diag.picked = 'public-fallback';
+      diag.apiCalls = apiCalls;
+      return reply(pub, true);
     }
     diag.apiCalls = apiCalls;
     if (S.out) return reply({ ...S.out, stale: true }, false);

@@ -22,6 +22,19 @@ const cover = (src, id) => (/^steam$/i.test(src) && /^\d{1,10}$/.test(id) ? `htt
 const coverMemo = new Map();
 const normName = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const steamIdOf = url => (String(url || '').match(/\/steam\/apps\/(\d{1,10})\//) || [])[1] || null;
+
+const KNOWN_COVERS = {
+  payday3: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1272080/header.jpg',
+  needforspeedmostwanted: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1262560/header.jpg',
+  needforspeedmostwanted510: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1262560/header.jpg',
+  approximatelyup: 'https://cdn.cloudflare.steamstatic.com/steam/apps/3904850/header.jpg',
+  lemansultimate: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2399420/header.jpg',
+  efootballpes2021seasonupdate: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1259970/header.jpg',
+  efootballpes2021: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1259970/header.jpg',
+  assettocorsa: 'https://cdn.cloudflare.steamstatic.com/steam/apps/244210/header.jpg',
+  assettocorsacompetizione: 'https://cdn.cloudflare.steamstatic.com/steam/apps/805550/header.jpg'
+};
+
 async function headOk(url) {
   try {
     const r = await fetch(url, { method: 'HEAD', headers: { 'User-Agent': 'uWaazy-hub/2.0' }, signal: AbortSignal.timeout(2500) });
@@ -44,14 +57,27 @@ async function steamHeader(id) {
   return (await headOk(capsule)) ? capsule : null;
 }
 async function steamSearchId(name) {
-  const j = await jsonGet('https://store.steampowered.com/api/storesearch/?cc=us&l=en&term=' + encodeURIComponent(name));
-  const items = j?.items || [];
+  const cleanTerm = String(name || '').replace(/[™®:–—]/g, ' ').replace(/\s+/g, ' ').trim();
+  const terms = cleanTerm && cleanTerm !== name ? [cleanTerm, name] : [name];
   const want = normName(name);
-  const hit = items.find(i => normName(i.name) === want)
-    || items.find(i => { const n = normName(i.name); return want.length >= 6 && n.length >= 6 && (n.startsWith(want) || want.startsWith(n)); });
-  return hit ? String(hit.id) : null;
+  for (const t of terms) {
+    if (!t) continue;
+    const j = await jsonGet('https://store.steampowered.com/api/storesearch/?cc=us&l=en&term=' + encodeURIComponent(t));
+    const items = j?.items || [];
+    const hit = items.find(i => normName(i.name) === want)
+      || items.find(i => { const n = normName(i.name); return want.length >= 5 && n.length >= 5 && (n.startsWith(want) || want.startsWith(n)); })
+      || items[0];
+    if (hit?.id) return String(hit.id);
+  }
+  return null;
 }
 async function lookupCover(game) {
+  if (!game?.name) return game?.cover || null;
+  const key = normName(game.name);
+  if (KNOWN_COVERS[key]) return KNOWN_COVERS[key];
+  for (const [k, url] of Object.entries(KNOWN_COVERS)) {
+    if (key.length >= 6 && (key.includes(k) || k.includes(key))) return url;
+  }
   const id = steamIdOf(game.cover);
   if (id) { const v = await steamHeader(id); if (v) return v; }
   else if (game.cover && await headOk(game.cover)) return game.cover;
@@ -61,18 +87,25 @@ async function lookupCover(game) {
 async function resolveCover(game, { force = false } = {}) {
   if (!game?.name) return game?.cover || null;
   const key = normName(game.name);
+  if (KNOWN_COVERS[key]) return KNOWN_COVERS[key];
+  for (const [k, url] of Object.entries(KNOWN_COVERS)) {
+    if (key.length >= 6 && (key.includes(k) || k.includes(key))) return url;
+  }
   const hit = coverMemo.get(key);
-  if (!force && hit && Date.now() - hit.at < (hit.url ? 12 * 3600e3 : 30 * 60e3)) return hit.url;
+  if (!force && hit && hit.url && Date.now() - hit.at < 12 * 3600e3) return hit.url;
   if (!force && URL_ && TOK) {
     try {
       const [c] = await redis([['GET', 'hub:cover:' + key]]);
-      if (c) { const url = c === '-' ? null : c; coverMemo.set(key, { at: Date.now(), url }); return url; }
+      if (c && c !== '-') { coverMemo.set(key, { at: Date.now(), url: c }); return c; }
     } catch {}
   }
   const url = await lookupCover(game);
-  coverMemo.set(key, { at: Date.now(), url });
-  if (URL_ && TOK) { try { await redis([['SET', 'hub:cover:' + key, url || '-', 'EX', url ? 30 * 86400 : 1800]]); } catch {} }
-  return url;
+  if (url) {
+    coverMemo.set(key, { at: Date.now(), url });
+    if (URL_ && TOK) { try { await redis([['SET', 'hub:cover:' + key, url, 'EX', 30 * 86400]]); } catch {} }
+    return url;
+  }
+  return null;
 }
 const ok = (a, b) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
 
@@ -191,10 +224,26 @@ export default async function handler(req, res) {
       }
       const ygp = await fetchYgp();
       const recent = mergeRecent(pushed, ygp.value);
+      let healedAny = false;
       await Promise.race([
-        Promise.all([...recent, ...(now ? [now] : [])].map(async g => { g.cover = await resolveCover(g); })),
+        Promise.all([...recent, ...(now ? [now] : [])].map(async g => {
+          const resolved = await resolveCover(g);
+          if (resolved) {
+            if (!g.cover) healedAny = true;
+            g.cover = resolved;
+          }
+        })),
         new Promise(r => setTimeout(r, 3500))
       ]);
+      if (healedAny && pushed.length && URL_ && TOK) {
+        try {
+          const healed = pushed.map(p => {
+            const match = recent.find(r => sameName(r, p));
+            return match && match.cover ? { ...p, cover: match.cover } : p;
+          });
+          await redis([['SET', 'hub:recent', JSON.stringify(healed)]]);
+        } catch {}
+      }
       const source = now ? 'playnite-live' : pushed.length ? 'playnite-history' : ygp.value.length ? 'ygp' : 'empty';
       return res.json({ now, recent, source, ...(req.query?.debug === '1' ? { _debug: { ygp: ygp.diag, redis: !(URL_ && TOK) ? 'not configured' : redisError ? 'ERROR: ' + redisError : 'ok', pushed: pushed.length } } : {}) });
     }

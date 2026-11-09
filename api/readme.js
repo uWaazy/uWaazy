@@ -36,13 +36,19 @@ async function saveLastGood(lang, svg) {
   const blob = gzipSync(Buffer.from(svg)).toString('base64');
   const parts = [];
   for (let i = 0; i < blob.length; i += CHUNK) parts.push(blob.slice(i, i + CHUNK));
-  await Promise.all(parts.map((part, i) => rcmd(['SET', `hub:readme:part:${lang}:${i}`, part, 'EX', LAST_GOOD_TTL])));
-  await rcmd(['SET', `hub:readme:meta:${lang}`, JSON.stringify({ n: parts.length, at: Date.now() }), 'EX', LAST_GOOD_TTL]);
+  await Promise.all([
+    rcmd(['SET', `hub:readme:raw:${lang}`, svg, 'EX', LAST_GOOD_TTL]),
+    rcmd(['SET', `hub:readme:meta:${lang}`, JSON.stringify({ n: parts.length, at: Date.now() }), 'EX', LAST_GOOD_TTL]),
+    ...parts.map((part, i) => rcmd(['SET', `hub:readme:part:${lang}:${i}`, part, 'EX', LAST_GOOD_TTL]))
+  ]);
 }
 async function loadLastGood(lang) {
-  const m = await rcmd(['GET', `hub:readme:meta:${lang}`]);
+  const [raw, m] = (await rcmd(['GET', `hub:readme:raw:${lang}`], ['GET', `hub:readme:meta:${lang}`])) || [];
   let meta = null;
-  try { meta = m && m[0] ? JSON.parse(m[0]) : null; } catch {}
+  try { meta = m ? JSON.parse(m) : null; } catch {}
+  if (raw && typeof raw === 'string') {
+    return { at: Number(meta?.at) || Date.now(), svg: raw };
+  }
   if (!meta || !meta.n) return null;
   const got = await rcmd(...Array.from({ length: meta.n }, (_, i) => ['GET', `hub:readme:part:${lang}:${i}`]));
   if (!got || got.some(x => !x)) return null;
@@ -664,34 +670,43 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', policy);
     return res.status(200).send(svg);
   };
-  const FRESH = 'public, max-age=0, s-maxage=10, stale-while-revalidate=60';
-  const STALE = 'public, max-age=0, s-maxage=5, stale-while-revalidate=60';
+  const CACHE_POLICY = 'public, max-age=0, s-maxage=30, stale-while-revalidate=300';
 
-  const hit = svgMem.get(lang);
-  if (hit && Date.now() - hit.at < FRESH_MS) return send(hit.svg, FRESH);
+  const triggerBackgroundRender = () => {
+    let job = inflight.get(lang);
+    if (!job) {
+      job = renderSvg(lang)
+        .then(async svg => {
+          svgMem.set(lang, { at: Date.now(), svg });
+          await saveLastGood(lang, svg);
+          return svg;
+        })
+        .finally(() => inflight.delete(lang));
+      inflight.set(lang, job);
+      keepAlive(job);
+    }
+    return job;
+  };
 
-  const lastGoodP = hit ? Promise.resolve(hit) : loadLastGood(lang);
-  let job = inflight.get(lang);
-  if (!job) {
-    job = renderSvg(lang)
-      .then(async svg => {
-        svgMem.set(lang, { at: Date.now(), svg });
-        await saveLastGood(lang, svg);
-        return svg;
-      })
-      .finally(() => inflight.delete(lang));
-    inflight.set(lang, job);
-    keepAlive(job);
+  const memHit = svgMem.get(lang);
+  if (memHit && Date.now() - memHit.at < 15000) {
+    return send(memHit.svg, CACHE_POLICY);
+  }
+  if (memHit && memHit.svg) {
+    triggerBackgroundRender();
+    return send(memHit.svg, CACHE_POLICY);
   }
 
-  const lastGood = await Promise.race([lastGoodP, sleep(800).then(() => null)]);
-  if (lastGood && (!svgMem.get(lang) || svgMem.get(lang).at < lastGood.at)) svgMem.set(lang, lastGood);
-  const stale = svgMem.get(lang) || lastGood || hit;
-  if (stale && Date.now() - stale.at < STALE_FIRST_MS) return send(stale.svg, STALE);
+  const redisHit = await Promise.race([loadLastGood(lang), sleep(600).then(() => null)]);
+  if (redisHit && redisHit.svg) {
+    svgMem.set(lang, redisHit);
+    triggerBackgroundRender();
+    return send(redisHit.svg, CACHE_POLICY);
+  }
 
-  const svg = await Promise.race([job.catch(() => null), sleep(DEADLINE_MS).then(() => null)]);
-  if (svg) return send(svg, FRESH);
-  const fallback = svgMem.get(lang) || stale;
-  if (fallback) return send(fallback.svg, STALE);
-  return send(PLACEHOLDER(lang), 'public, max-age=0, s-maxage=1, stale-while-revalidate=5');
+  const job = triggerBackgroundRender();
+  const svg = await Promise.race([job.catch(() => null), sleep(1800).then(() => null)]);
+  if (svg) return send(svg, CACHE_POLICY);
+
+  return send(PLACEHOLDER(lang), 'public, max-age=0, s-maxage=2, stale-while-revalidate=10');
 }
