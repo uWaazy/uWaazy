@@ -671,7 +671,14 @@ export default async function handler(req, res) {
         return { ...base, live: true, paused: false, watchedAt: new Date(S.live.startedAt).toISOString(), elapsedSec: Math.round(ageSec), progress, source: 'simkl-inferred' };
       }
     }
-    const pick = [S.lastDone, S.paused].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
+    let validPaused = S.paused;
+    if (validPaused) {
+      const pausedAgeMs = Date.now() - ts(validPaused.watchedAt);
+      if (pausedAgeMs > 12 * 3600e3 || (pausedAgeMs > 2 * 3600e3 && (validPaused.progress || 0) < 5)) {
+        if (S.lastDone) validPaused = null;
+      }
+    }
+    const pick = [S.lastDone, validPaused].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
     diag.picked = pick ? pick.source : null;
     if (!pick) return { live: false, title: null, source: 'empty-history' };
     return { ...(await finalize(pick, {})), live: false, paused: pick.paused, watchedAt: pick.watchedAt,
@@ -680,7 +687,11 @@ export default async function handler(req, res) {
   const rebuild = async (P, W) => {
     const oldPaused = S.paused;
     const paused = await getPaused();
-    const lastDone = await getLastDone();
+    let lastDone = await getLastDone();
+    const pub = await getPublicRecent();
+    if (pub && (!lastDone || ts(pub.watchedAt) >= ts(lastDone.watchedAt) || !lastDone.title)) {
+      lastDone = pub;
+    }
     if (oldPaused) S.prevPaused = oldPaused;
     S.paused = paused; S.lastDone = lastDone; S.live = null;
     const known = Math.max(ts(paused?.watchedAt), ts(lastDone?.watchedAt));
@@ -731,12 +742,17 @@ export default async function handler(req, res) {
       return reply(pub, true);
     }
 
-    if (!S.loaded) {
+    if (!S.loaded || req.query?.force === '1') {
       S.loaded = true;
       const state = jparse(st);
       if (state) Object.assign(S, { sig: state.sig || '', paused: state.paused || null, lastDone: state.lastDone || null, prevPaused: state.prevPaused || null,
         live: state.live || null });
-      if (!S.out) S.out = jparse(last);
+      if (!S.out || req.query?.force === '1') S.out = jparse(last);
+      if (S.out?.title === 'Resident Evil' || req.query?.force === '1') {
+        S.out = null;
+        S.sig = '';
+        if (S.paused?.title === 'Resident Evil') S.paused = null;
+      }
       S.blockedUntil = Math.max(S.blockedUntil, Number(bl) || 0);
       diag.restoredFromRedis = !!(state || S.out);
     }
