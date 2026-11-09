@@ -581,15 +581,25 @@ export default async function handler(req, res) {
     for (const [list, key, type] of [['shows', 'show', 'show'], ['anime', 'show', 'anime'], ['movies', 'movie', 'movie']]) {
       for (const entry of data?.[list] || []) {
         const media = entry?.[key] || entry?.show || entry?.anime || entry?.movie || {};
-        const watchedAt = toIso(entry.last_watched_at || entry.last_watched || entry.watched_at);
+        let watchedAt = toIso(entry.last_watched_at || entry.last_watched || entry.watched_at);
+        let newestEp = 0;
+        for (const sn of entry.seasons || []) {
+          for (const ep of sn.episodes || []) {
+            const s = ts(ep.watched_at);
+            if (s && s > newestEp) newestEp = s;
+          }
+        }
+        if (newestEp && (!watchedAt || newestEp > ts(watchedAt))) {
+          watchedAt = new Date(newestEp).toISOString();
+        }
         const addedAt = toIso(entry.added_to_watchlist_at);
-        if (media.title && (watchedAt || !needDate)) rows.push({ entry, media, type, watchedAt, addedAt });
+        if (media.title && (watchedAt || !needDate)) rows.push({ entry, media, type, watchedAt, addedAt, newestEp });
       }
     }
     return rows.sort((a, b) => (ts(b.watchedAt) || ts(b.addedAt)) - (ts(a.watchedAt) || ts(a.addedAt)));
   };
   const rowToItem = (top, preferNext = false) => {
-    let season = null, number = null, newest = 0;
+    let season = null, number = null, newest = top.newestEp || 0;
     if (preferNext && typeof top.entry.next_to_watch === 'string' && top.entry.next_to_watch) {
       const nm = top.entry.next_to_watch.match(/(?:S(\d+))?E(\d+)/i);
       if (nm) {
@@ -609,9 +619,10 @@ export default async function handler(req, res) {
       const m = episode.match(/(?:S(\d+))?E(\d+)/i);
       if (m) { season = m[1] ? +m[1] : 1; number = +m[2]; episode = sxe(season, number); }
     }
+    const finalWatchedAt = newest > 0 ? new Date(newest).toISOString() : (top.watchedAt || top.addedAt);
     return { title: top.media.title, type: top.type, season, number, episode, episodeTitle: null, sid: top.media?.ids?.simkl,
       imdbId: top.media?.ids?.imdb || null, tmdbId: top.media?.ids?.tmdb || null,
-      media: top.media, watchedAt: top.watchedAt || top.addedAt, paused: false, source: 'sync-history' };
+      media: top.media, watchedAt: finalWatchedAt, paused: false, source: 'sync-history' };
   };
   const getLastDone = async () => {
     const base = { extended: 'full', episode_watched_at: 'yes' };
