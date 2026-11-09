@@ -318,6 +318,68 @@ def detect_live_from_nuvio():
     }
 
 
+def get_last_watched_nuvio():
+    entries = read_nuvio_entries()
+    if not entries:
+        return None
+    top = entries[0]
+    imdb_id = top.get("parentMetaId")
+    is_mov = top.get("contentType") == "movie" or top.get("parentMetaType") == "movie"
+    season_num = top.get("seasonNumber")
+    ep_num = top.get("episodeNumber")
+    raw_title = top.get("title") or ""
+    raw_ep_title = top.get("episodeTitle")
+    raw_poster = top.get("poster")
+    upd_ms = int(top.get("lastUpdatedEpochMs") or 0)
+
+    load_imdb_map()
+    mapped = IMDB_MAP.get(str(imdb_id or "")) or {}
+    media_type = mapped.get("type") or ("movie" if is_mov else "show")
+    simkl_id = mapped.get("simkl") or None
+    tmdb_id = mapped.get("tmdb") or None
+
+    episode = None
+    if not is_mov and ep_num is not None:
+        if season_num is not None:
+            episode = f"S{int(season_num):02d}E{int(ep_num):02d}"
+        else:
+            episode = f"Ep. {int(ep_num)}"
+
+    loc_info = resolve_i18n(
+        raw_title,
+        media_type,
+        season_num,
+        ep_num,
+        imdb_id=imdb_id,
+        tmdb_id=tmdb_id,
+        fallback_ep_title=raw_ep_title,
+        fallback_poster=raw_poster,
+    )
+    i18n = loc_info.get("i18n") or {}
+    en_loc = i18n.get("en") or {}
+    simkl_path_kind = "movies" if media_type == "movie" else ("anime" if media_type == "anime" else "tv")
+    url = f"https://simkl.com/{simkl_path_kind}/{simkl_id}" if simkl_id else DASHBOARD_URL
+
+    return {
+        "live": False,
+        "paused": False,
+        "title": en_loc.get("title") or raw_title,
+        "type": media_type,
+        "season": season_num,
+        "number": ep_num,
+        "episode": episode,
+        "episodeTitle": en_loc.get("episodeTitle") or raw_ep_title,
+        "imdbId": loc_info.get("imdbId") or imdb_id,
+        "tmdbId": loc_info.get("tmdbId") or tmdb_id,
+        "simklId": simkl_id,
+        "watchedAt": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(upd_ms / 1000.0 if upd_ms else time.time())),
+        "poster": en_loc.get("poster") or raw_poster,
+        "i18n": i18n,
+        "url": url,
+        "source": "nuvio-history",
+    }
+
+
 def format_for_lang(item: dict, lang: str = "en") -> dict:
     now_ms = int(time.time() * 1000)
     out = dict(item)
@@ -411,6 +473,9 @@ def start_http_server():
 def run_daemon():
     if not start_http_server():
         return
+    init_last = get_last_watched_nuvio()
+    if init_last:
+        push_to_hub({"state": "idle", "lastItem": init_last})
     last_state_was_live = False
     last_push_ts = 0.0
     last_pushed_pos = -1
@@ -433,7 +498,8 @@ def run_daemon():
                     STATE["live"] = False
                     STATE["item"] = None
                     STATE["updatedAt"] = int(now * 1000)
-                    push_to_hub({"state": "idle"})
+                    last_watched = get_last_watched_nuvio()
+                    push_to_hub({"state": "idle", "lastItem": last_watched})
                     last_state_was_live = False
                 else:
                     STATE["live"] = False

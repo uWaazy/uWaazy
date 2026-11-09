@@ -413,12 +413,22 @@ export default async function handler(req, res) {
       await rcmd(['SET', 'hub:simkl:live', JSON.stringify(payload), 'EX', 150]);
       return res.status(200).json({ ok: true, state: 'watching', title: payload.title });
     }
-    if (body?.state === 'idle') {
+    if (body?.state === 'idle' || body?.state === 'last_watched') {
+      const itemToSave = body?.lastItem || body?.item;
+      if (itemToSave && itemToSave.title) {
+        const finished = {
+          ...itemToSave,
+          live: false,
+          paused: false,
+          watchedAt: itemToSave.watchedAt || new Date().toISOString()
+        };
+        await reply(finished, true);
+      }
       S.pushedLive = null;
       S.live = null;
       S.sig = '';
       await rcmd(['DEL', 'hub:simkl:live']);
-      return res.status(200).json({ ok: true, state: 'idle' });
+      return res.status(200).json({ ok: true, state: body?.state, title: itemToSave?.title || null });
     }
     return res.status(400).json({ error: 'invalid state or item' });
   }
@@ -640,9 +650,12 @@ export default async function handler(req, res) {
   };
 
   const finalize = async (item, extra) => {
+    if (item.source === 'nuvio-history' || (!item.sid && item.poster)) {
+      return { ...item, ...extra };
+    }
     const det = await details(item.type, item.sid);
     const epTitle = item.episodeTitle || await episodeName(item.type, item.sid, item.season, item.number);
-    const runtimeMin = Number(item.media?.runtime) || det?.runtime || (item.type === 'movie' ? 110 : 25);
+    const runtimeMin = Number(item.media?.runtime) || det?.runtime || item.runtimeMin || (item.type === 'movie' ? 110 : 25);
     return {
       title: item.title,
       type: item.type,
@@ -655,8 +668,9 @@ export default async function handler(req, res) {
       episodeTitle: epTitle,
       runtimeMin,
       durationSec: runtimeMin * 60,
-      poster: posterUrl(item.media?.poster) || posterUrl(det?.poster),
-      url: simklUrl(item.type, item.media),
+      poster: item.poster || posterUrl(item.media?.poster) || posterUrl(det?.poster),
+      url: item.url || simklUrl(item.type, item.media),
+      ...(item.i18n ? { i18n: item.i18n } : {}),
       ...extra
     };
   };
@@ -673,12 +687,13 @@ export default async function handler(req, res) {
     }
     let validPaused = S.paused;
     if (validPaused) {
+      if (validPaused.title === 'Resident Evil') validPaused = null;
       const pausedAgeMs = Date.now() - ts(validPaused.watchedAt);
       if (pausedAgeMs > 12 * 3600e3 || (pausedAgeMs > 2 * 3600e3 && (validPaused.progress || 0) < 5)) {
-        if (S.lastDone) validPaused = null;
+        validPaused = null;
       }
     }
-    const pick = [S.lastDone, validPaused].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
+    const pick = [S.lastDone, validPaused, S.out].filter(Boolean).filter(x => x.title !== 'Resident Evil').sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
     diag.picked = pick ? pick.source : null;
     if (!pick) return { live: false, title: null, source: 'empty-history' };
     return { ...(await finalize(pick, {})), live: false, paused: pick.paused, watchedAt: pick.watchedAt,
@@ -752,6 +767,7 @@ export default async function handler(req, res) {
         S.out = null;
         S.sig = '';
         if (S.paused?.title === 'Resident Evil') S.paused = null;
+        if (S.lastDone?.title === 'Resident Evil') S.lastDone = null;
       }
       S.blockedUntil = Math.max(S.blockedUntil, Number(bl) || 0);
       diag.restoredFromRedis = !!(state || S.out);
