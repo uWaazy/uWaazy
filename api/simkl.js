@@ -426,7 +426,7 @@ export default async function handler(req, res) {
   const debug = req.query?.debug === '1';
   const rawLang = String(req.query?.lang || req.headers['accept-language'] || 'en').slice(0, 2).toLowerCase();
   const reqLang = ['pt', 'en', 'es'].includes(rawLang) ? rawLang : 'en';
-  const diag = { lang: reqLang };
+  const diag = { lang: reqLang, v: '2026-11-09-v2' };
 
   res.setHeader('Cache-Control', debug ? 'no-store' : 'public, s-maxage=6, stale-while-revalidate=15');
   if (req.method !== 'GET') return res.status(405).end();
