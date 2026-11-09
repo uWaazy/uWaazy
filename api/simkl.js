@@ -566,9 +566,17 @@ export default async function handler(req, res) {
     return out;
   }
 
+  const isBannedTitle = t => /resident\s*evil/i.test(String(t || ''));
+
   const reply = async (obj, remember = true) => {
+    if (isBannedTitle(obj?.title)) {
+      obj = (S.out && !isBannedTitle(S.out?.title)) ? S.out : { live: false, title: null, source: 'empty-history' };
+    }
     const localized = await enrichLocalization(obj);
-    if (remember) { S.out = localized; await rcmd(['SET', 'hub:simkl:last', JSON.stringify(localized), 'EX', 7 * 86400]); }
+    if (remember && localized && !isBannedTitle(localized.title)) {
+      S.out = localized;
+      await rcmd(['SET', 'hub:simkl:last', JSON.stringify(localized), 'EX', 7 * 86400]);
+    }
     return res.status(200).json(debug ? { ...localized, _debug: diag } : localized);
   };
 
@@ -578,7 +586,7 @@ export default async function handler(req, res) {
     diag.playbackCount = list.length;
     return list.map(entry => {
       const media = entry.movie || entry.show || entry.anime;
-      if (!media?.title) return null;
+      if (!media?.title || isBannedTitle(media.title)) return null;
       const type = entry.movie ? 'movie' : entry.anime ? 'anime' : 'show';
       const season = entry.episode?.season ?? null, number = entry.episode?.number ?? entry.episode?.episode ?? null;
       return { title: media.title, type, season, number, episode: sxe(season, number), episodeTitle: entry.episode?.title || null,
@@ -591,6 +599,7 @@ export default async function handler(req, res) {
     for (const [list, key, type] of [['shows', 'show', 'show'], ['anime', 'show', 'anime'], ['movies', 'movie', 'movie']]) {
       for (const entry of data?.[list] || []) {
         const media = entry?.[key] || entry?.show || entry?.anime || entry?.movie || {};
+        if (isBannedTitle(media.title)) continue;
         let watchedAt = toIso(entry.last_watched_at || entry.last_watched || entry.watched_at);
         let newestEp = 0;
         for (const sn of entry.seasons || []) {
@@ -687,13 +696,13 @@ export default async function handler(req, res) {
     }
     let validPaused = S.paused;
     if (validPaused) {
-      if (validPaused.title === 'Resident Evil') validPaused = null;
+      if (isBannedTitle(validPaused.title)) validPaused = null;
       const pausedAgeMs = Date.now() - ts(validPaused.watchedAt);
-      if (pausedAgeMs > 12 * 3600e3 || (pausedAgeMs > 2 * 3600e3 && (validPaused.progress || 0) < 5)) {
+      if (pausedAgeMs > 6 * 3600e3 || (pausedAgeMs > 2 * 3600e3 && (validPaused.progress || 0) < 5)) {
         validPaused = null;
       }
     }
-    const pick = [S.lastDone, validPaused, S.out].filter(Boolean).filter(x => x.title !== 'Resident Evil').sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
+    const pick = [S.lastDone, validPaused, S.out].filter(Boolean).filter(x => !isBannedTitle(x.title)).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
     diag.picked = pick ? pick.source : null;
     if (!pick) return { live: false, title: null, source: 'empty-history' };
     return { ...(await finalize(pick, {})), live: false, paused: pick.paused, watchedAt: pick.watchedAt,
@@ -763,12 +772,12 @@ export default async function handler(req, res) {
       if (state) Object.assign(S, { sig: state.sig || '', paused: state.paused || null, lastDone: state.lastDone || null, prevPaused: state.prevPaused || null,
         live: state.live || null });
       if (!S.out || req.query?.force === '1') S.out = jparse(last);
-      if (S.out?.title === 'Resident Evil' || req.query?.force === '1') {
+      if (isBannedTitle(S.out?.title) || req.query?.force === '1') {
         S.out = null;
         S.sig = '';
-        if (S.paused?.title === 'Resident Evil') S.paused = null;
-        if (S.lastDone?.title === 'Resident Evil') S.lastDone = null;
       }
+      if (isBannedTitle(S.paused?.title)) S.paused = null;
+      if (isBannedTitle(S.lastDone?.title)) S.lastDone = null;
       S.blockedUntil = Math.max(S.blockedUntil, Number(bl) || 0);
       diag.restoredFromRedis = !!(state || S.out);
     }

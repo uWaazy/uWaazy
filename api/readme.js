@@ -73,19 +73,19 @@ async function toDataUri(url) {
   if (url.startsWith('data:')) return url;
   if (url.startsWith('assets/logo')) return getLogoDataUri();
   const fullUrl = (url.startsWith('http') ? url : `${PROD_ORIGIN}/${url.replace(/^\/+/, '')}`)
-    .replace(/\/\d+x\d+bb\.(jpg|png|webp)/i, '/160x160bb.$1')
-    .replace(/\/i\/u\/300x300\//i, '/i/u/174s/')
-    .replace(/(i\.scdn\.co\/image\/)ab67616d0000b273/i, '$1ab67616d00001e02')
+    .replace(/\/\d+x\d+bb\.(jpg|png|webp)/i, '/100x100bb.$1')
+    .replace(/\/i\/u\/300x300\//i, '/i/u/120s/')
+    .replace(/(i\.scdn\.co\/image\/)ab67616d0000b273/i, '$1ab67616d00004851')
     .replace(/(i\.scdn\.co\/image\/)ab6761610000e5eb/i, '$1ab6761610000f178')
-    .replace(/(image\.tmdb\.org\/t\/p\/)w(?:342|500|780|original)/i, '$1w185');
+    .replace(/(image\.tmdb\.org\/t\/p\/)w(?:342|500|780|original)/i, '$1w92');
   const hit = imgMemo.get(fullUrl);
   if (hit && Date.now() - hit.at < 30 * 60e3) return hit.val;
   try {
-    const r = await fetch(fullUrl, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(3500) });
+    const r = await fetch(fullUrl, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(2500) });
     if (!r.ok) return '';
     const ct = (r.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
     const buf = Buffer.from(await r.arrayBuffer());
-    if (!buf.length || buf.length > 160000) return '';
+    if (!buf.length || buf.length > 90000) return '';
     const val = `data:${ct};base64,${buf.toString('base64')}`;
     imgMemo.set(fullUrl, { at: Date.now(), val });
     return val;
@@ -670,7 +670,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', policy);
     return res.status(200).send(svg);
   };
-  const CACHE_POLICY = 'public, max-age=0, s-maxage=30, stale-while-revalidate=300';
+  const CACHE_POLICY = 'public, max-age=60, s-maxage=120, stale-while-revalidate=600';
 
   const triggerBackgroundRender = () => {
     let job = inflight.get(lang);
@@ -697,7 +697,7 @@ export default async function handler(req, res) {
     return send(memHit.svg, CACHE_POLICY);
   }
 
-  const redisHit = await Promise.race([loadLastGood(lang), sleep(600).then(() => null)]);
+  const redisHit = await Promise.race([loadLastGood(lang), sleep(1000).then(() => null)]);
   if (redisHit && redisHit.svg) {
     svgMem.set(lang, redisHit);
     triggerBackgroundRender();
@@ -705,7 +705,7 @@ export default async function handler(req, res) {
   }
 
   const job = triggerBackgroundRender();
-  const svg = await Promise.race([job.catch(() => null), sleep(1800).then(() => null)]);
+  const svg = await Promise.race([job.catch(() => null), sleep(3800).then(() => null)]);
   if (svg) return send(svg, CACHE_POLICY);
 
   return send(PLACEHOLDER(lang), 'public, max-age=0, s-maxage=2, stale-while-revalidate=10');
