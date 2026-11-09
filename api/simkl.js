@@ -749,12 +749,14 @@ export default async function handler(req, res) {
     const a = S.acts;
     const P = Math.max(ts(a?.tv_shows?.playback), ts(a?.anime?.playback), ts(a?.movies?.playback));
     const W = Math.max(ts(a?.tv_shows?.watching), ts(a?.anime?.watching));
-    const sig = `${a?.all}|${P}|${W}`;
+    const D = Math.max(ts(a?.tv_shows?.watched), ts(a?.anime?.watched), ts(a?.movies?.watched));
+    const sig = `${a?.all}|${P}|${W}|${D}`;
     diag.activities = { all: a?.all || null, playback: { movies: a?.movies?.playback || null, shows: a?.tv_shows?.playback || null, anime: a?.anime?.playback || null },
-      watching: { shows: a?.tv_shows?.watching || null, anime: a?.anime?.watching || null }, now: new Date().toISOString() };
-    if (S.sig !== sig || (!S.paused && !S.lastDone)) {
-      await rebuild(P, W); S.sig = sig;
-      await rcmd(['SET', 'hub:simkl:state', JSON.stringify({ sig: S.sig, paused: S.paused, lastDone: S.lastDone, prevPaused: S.prevPaused, live: S.live }), 'EX', 30 * 86400]);
+      watching: { shows: a?.tv_shows?.watching || null, anime: a?.anime?.watching || null },
+      watched: { shows: a?.tv_shows?.watched || null, anime: a?.anime?.watched || null, movies: a?.movies?.watched || null }, now: new Date().toISOString() };
+    if (S.sig !== sig || (!S.paused && !S.lastDone) || req.query?.force === '1' || !S.rebuiltAt || Date.now() - S.rebuiltAt > 60e3) {
+      await rebuild(P, W); S.sig = sig; S.rebuiltAt = Date.now();
+      await rcmd(['SET', 'hub:simkl:state', JSON.stringify({ sig: S.sig, paused: S.paused, lastDone: S.lastDone, prevPaused: S.prevPaused, live: S.live, rebuiltAt: S.rebuiltAt }), 'EX', 30 * 86400]);
     }
     const out = await present();
     diag.apiCalls = apiCalls;
