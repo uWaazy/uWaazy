@@ -327,6 +327,14 @@ function hydratePushedLive(liveObj) {
   };
 }
 
+async function saveLast(item) {
+  const prev = jparse((await rcmd(['GET', 'hub:simkl:last']))?.[0]);
+  if (prev && ts(prev.watchedAt) > ts(item.watchedAt) + 1000) return false;
+  S.out = item;
+  await rcmd(['SET', 'hub:simkl:last', JSON.stringify(item), 'EX', 7 * 86400]);
+  return true;
+}
+
 const S = { acts: null, actsAt: 0, sig: '', P: 0, paused: null, lastDone: null, prevPaused: null, live: null, pushedLive: null, out: null, blockedUntil: 0 };
 const BACKOFF_MS = 20 * 60e3;
 
@@ -415,20 +423,20 @@ export default async function handler(req, res) {
     }
     if (body?.state === 'idle' || body?.state === 'last_watched') {
       const itemToSave = body?.lastItem || body?.item;
+      let saved = false;
       if (itemToSave && itemToSave.title) {
-        const finished = {
+        saved = await saveLast({
           ...itemToSave,
           live: false,
           paused: false,
-          watchedAt: itemToSave.watchedAt || new Date().toISOString()
-        };
-        await reply(finished, true);
+          watchedAt: toIso(itemToSave.watchedAt) || new Date().toISOString()
+        });
       }
       S.pushedLive = null;
       S.live = null;
       S.sig = '';
       await rcmd(['DEL', 'hub:simkl:live']);
-      return res.status(200).json({ ok: true, state: body?.state, title: itemToSave?.title || null });
+      return res.status(200).json({ ok: true, state: body?.state, title: itemToSave?.title || null, saved });
     }
     return res.status(400).json({ error: 'invalid state or item' });
   }
@@ -566,14 +574,9 @@ export default async function handler(req, res) {
     return out;
   }
 
-  const isBannedTitle = t => /resident\s*evil/i.test(String(t || ''));
-
   const reply = async (obj, remember = true) => {
-    if (isBannedTitle(obj?.title)) {
-      obj = (S.out && !isBannedTitle(S.out?.title)) ? S.out : { live: false, title: null, source: 'empty-history' };
-    }
     const localized = await enrichLocalization(obj);
-    if (remember && localized && !isBannedTitle(localized.title)) {
+    if (remember && localized && localized.title) {
       S.out = localized;
       await rcmd(['SET', 'hub:simkl:last', JSON.stringify(localized), 'EX', 7 * 86400]);
     }
@@ -586,7 +589,7 @@ export default async function handler(req, res) {
     diag.playbackCount = list.length;
     return list.map(entry => {
       const media = entry.movie || entry.show || entry.anime;
-      if (!media?.title || isBannedTitle(media.title)) return null;
+      if (!media?.title) return null;
       const type = entry.movie ? 'movie' : entry.anime ? 'anime' : 'show';
       const season = entry.episode?.season ?? null, number = entry.episode?.number ?? entry.episode?.episode ?? null;
       return { title: media.title, type, season, number, episode: sxe(season, number), episodeTitle: entry.episode?.title || null,
@@ -599,7 +602,6 @@ export default async function handler(req, res) {
     for (const [list, key, type] of [['shows', 'show', 'show'], ['anime', 'show', 'anime'], ['movies', 'movie', 'movie']]) {
       for (const entry of data?.[list] || []) {
         const media = entry?.[key] || entry?.show || entry?.anime || entry?.movie || {};
-        if (isBannedTitle(media.title)) continue;
         let watchedAt = toIso(entry.last_watched_at || entry.last_watched || entry.watched_at);
         let newestEp = 0;
         for (const sn of entry.seasons || []) {
@@ -696,13 +698,12 @@ export default async function handler(req, res) {
     }
     let validPaused = S.paused;
     if (validPaused) {
-      if (isBannedTitle(validPaused.title)) validPaused = null;
       const pausedAgeMs = Date.now() - ts(validPaused.watchedAt);
       if (pausedAgeMs > 6 * 3600e3 || (pausedAgeMs > 2 * 3600e3 && (validPaused.progress || 0) < 5)) {
         validPaused = null;
       }
     }
-    const pick = [S.lastDone, validPaused, S.out].filter(Boolean).filter(x => !isBannedTitle(x.title)).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
+    const pick = [S.lastDone, validPaused, S.out].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
     diag.picked = pick ? pick.source : null;
     if (!pick) return { live: false, title: null, source: 'empty-history' };
     return { ...(await finalize(pick, {})), live: false, paused: pick.paused, watchedAt: pick.watchedAt,
@@ -772,15 +773,12 @@ export default async function handler(req, res) {
       if (state) Object.assign(S, { sig: state.sig || '', paused: state.paused || null, lastDone: state.lastDone || null, prevPaused: state.prevPaused || null,
         live: state.live || null });
       if (!S.out || req.query?.force === '1') S.out = jparse(last);
-      if (isBannedTitle(S.out?.title) || req.query?.force === '1') {
-        S.out = null;
-        S.sig = '';
-      }
-      if (isBannedTitle(S.paused?.title)) S.paused = null;
-      if (isBannedTitle(S.lastDone?.title)) S.lastDone = null;
+      if (req.query?.force === '1') S.sig = '';
       S.blockedUntil = Math.max(S.blockedUntil, Number(bl) || 0);
       diag.restoredFromRedis = !!(state || S.out);
     }
+    const savedLast = jparse(last);
+    if (savedLast?.title && ts(savedLast.watchedAt) > ts(S.out?.watchedAt)) S.out = savedLast;
     if (Date.now() < S.blockedUntil) {
       diag.blockedForMin = Math.ceil((S.blockedUntil - Date.now()) / 60e3);
       return S.out ? reply({ ...S.out, stale: true }, false) : res.status(503).json({ error: 'Simkl daily API limit reached; retrying later.', ...(debug ? { _debug: diag } : {}) });

@@ -1,3 +1,4 @@
+import calendar
 import json
 import os
 import re
@@ -50,6 +51,7 @@ _ENV = load_local_env()
 HUB_SECRET = os.environ.get("HUB_SECRET") or _ENV.get("HUB_SECRET") or ""
 TMDB_KEY = os.environ.get("TMDB_API_KEY") or _ENV.get("TMDB_API_KEY") or ""
 
+LAST_PATH = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.dirname(os.path.abspath(__file__)), "uwaazy-last-watched.json")
 STATE = {"live": False, "item": None, "updatedAt": 0}
 I18N_CACHE = {}
 IMDB_MAP = {}
@@ -151,7 +153,7 @@ def read_nuvio_entries():
         if not m:
             return []
         data = json.loads(unescape_java_prop(m.group(1)))
-        entries = [e for e in (data.get("entries") or []) if isinstance(e, dict) and not re.search(r"resident\s*evil", str(e.get("title") or ""), re.I)]
+        entries = [e for e in (data.get("entries") or []) if isinstance(e, dict)]
         entries.sort(key=lambda x: int(x.get("lastUpdatedEpochMs") or 0), reverse=True)
         return entries
     except Exception:
@@ -336,7 +338,50 @@ def detect_live_from_nuvio():
     }
 
 
+def iso_to_ms(value):
+    try:
+        return int(calendar.timegm(time.strptime(str(value)[:19], "%Y-%m-%dT%H:%M:%S")) * 1000)
+    except Exception:
+        return 0
+
+
+def load_saved_last():
+    try:
+        with open(LAST_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) and data.get("title") else None
+    except Exception:
+        return None
+
+
+def save_last(item):
+    try:
+        tmp = LAST_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(item, fh)
+        os.replace(tmp, LAST_PATH)
+    except Exception:
+        pass
+
+
+def finish_live_item(live_item):
+    done = {k: v for k, v in live_item.items() if k not in ("startedAt", "startProgress", "elapsedSec", "progress")}
+    done["live"] = False
+    done["paused"] = False
+    done["source"] = "nuvio-history"
+    done["watchedAt"] = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime())
+    return done
+
+
 def get_last_watched_nuvio():
+    from_file = get_last_from_nuvio_file()
+    saved = load_saved_last()
+    if saved and (not from_file or iso_to_ms(saved.get("watchedAt")) >= iso_to_ms(from_file.get("watchedAt"))):
+        return saved
+    return from_file
+
+
+def get_last_from_nuvio_file():
     entries = read_nuvio_entries()
     if not entries:
         return None
@@ -501,6 +546,7 @@ def run_daemon():
     if init_last:
         push_to_hub({"state": "idle", "lastItem": init_last})
     last_state_was_live = False
+    last_live_item = None
     last_push_ts = 0.0
     last_pushed_pos = -1
     while True:
@@ -511,6 +557,7 @@ def run_daemon():
                 STATE["live"] = True
                 STATE["item"] = parsed
                 STATE["updatedAt"] = int(now * 1000)
+                last_live_item = parsed
                 el_sec = int(parsed.get("elapsedSec") or 0)
                 if not last_state_was_live or (now - last_push_ts >= 20.0) or abs(el_sec - last_pushed_pos) > 30:
                     push_to_hub({"state": "watching", "item": parsed})
@@ -522,9 +569,12 @@ def run_daemon():
                     STATE["live"] = False
                     STATE["item"] = None
                     STATE["updatedAt"] = int(now * 1000)
-                    last_watched = get_last_watched_nuvio()
+                    last_watched = finish_live_item(last_live_item) if last_live_item else get_last_watched_nuvio()
+                    if last_watched:
+                        save_last(last_watched)
                     push_to_hub({"state": "idle", "lastItem": last_watched})
                     last_state_was_live = False
+                    last_live_item = None
                 else:
                     STATE["live"] = False
                     STATE["item"] = None

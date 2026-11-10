@@ -618,17 +618,26 @@ function pickBg(){
 setInterval(()=>{if(!BG.music&&!document.hidden){BG.idx++;pickBg()}},14e3);
 
 const NP_URL='https://widget.nowplaying.site/NCHtxlyDh553sEwM';
-const NP={lastLive:0,lf:null,key:'',timer:0,off:false,mode:(Q.get('player')||'auto').toLowerCase()};
+const NP={lastLive:0,lf:null,key:'',busy:false,off:false,mode:(Q.get('player')||'auto').toLowerCase()};
 const musicLive=()=>Date.now()-NP.lastLive<45e3;
 const npNum=k=>{const v=parseFloat(Q.get(k));return isNaN(v)?null:v};
 function swapNp(){
-  if(NP.off)return;
+  if(NP.off||NP.busy)return;
+  NP.busy=true;
   const art=$('track-art'),olds=[...art.querySelectorAll('.ta-np')];
   const n=document.createElement('iframe');
   n.className='ta-np';n.title='NowPlaying.site (Canvas)';n.tabIndex=-1;n.setAttribute('scrolling','no');n.setAttribute('allow','autoplay');
-  n.onload=()=>setTimeout(()=>{n.style.opacity='1';setTimeout(()=>olds.forEach(o=>o.remove()),700)},1200);
+  let done=false;
+  const finish=ok=>{
+    if(done)return;done=true;NP.busy=false;
+    if(!ok){n.remove();return}
+    setTimeout(()=>{n.style.opacity='1';setTimeout(()=>olds.forEach(o=>o.remove()),700)},1200);
+  };
+  n.onload=()=>finish(true);
+  setTimeout(()=>finish(false),10000);
   n.src=NP_URL;art.append(n);
 }
+function clearNp(){document.querySelectorAll('#track-art .ta-np').forEach(o=>o.remove());NP.busy=false}
 (function(){
   const root=document.documentElement.style;
   if(NP.mode==='lastfm'){NP.off=true;return}
@@ -638,7 +647,8 @@ function swapNp(){
   if(w!=null)root.setProperty('--np-w',w+'px');if(h!=null)root.setProperty('--np-h',h+'px');
   const fit=()=>{const a=$('track-art').clientWidth||114;root.setProperty('--np-s',force||(a/140*1.1))};
   fit();addEventListener('resize',fit);
-  if(npr&&npr>=4)setInterval(()=>{if(musicLive()&&!document.hidden)swapNp()},npr*1000);
+  const per=npr==null?8:npr;
+  if(per>=4)setInterval(()=>{if(musicLive()&&!document.hidden)swapNp()},per*1000);
 })();
 
 function fmtDateShort(iso){
@@ -697,11 +707,12 @@ function renderTrack(){
   $('track-state-t').textContent=live?T('nowListening'):T('lastTrack');
   $('track-title').textContent=lf?(track?.title||T('noTrack')):T('lfLoading');
   $('track-artist').textContent=lf?(track?.artist||T('noScrobbles')):T('lfChecking');
-  const cov=$('ta-cover');cov.style.backgroundImage='';cov.textContent='♪';bg(cov,track?.image);
+  const cov=$('ta-cover'),coverSrc=track?.image||'';
+  if(cov.dataset.src!==coverSrc){cov.dataset.src=coverSrc;cov.style.backgroundImage='';cov.textContent='♪';bg(cov,coverSrc)}
   const key=live&&track?`${track.title}|${track.artist}`:'';
   if(key!==NP.key){
-    NP.key=key;clearTimeout(NP.timer);
-    if(key){swapNp();NP.timer=setTimeout(()=>{if(NP.key===key&&musicLive())swapNp()},9000)}
+    NP.key=key;
+    if(key)swapNp();else clearNp();
   }
   if(live&&lf?.trackInfo)renderTrackInsights(lf.trackInfo);
   else{const b=$('track-insights');b.hidden=true;b.innerHTML=''}
@@ -955,37 +966,27 @@ async function fetchLocalSimkl(){
     return d&&d.title?d:null;
   }catch{return null}
 }
-const isBannedWatch=t=>/resident\s*evil/i.test(String(t||''));
+const watchTs=w=>Date.parse(w?.watchedAt||0)||0;
 async function loadWatch(){
   try{if(CFG.demo){renderWatch(DEMO_W);return}
-    const [remoteRes,localLive]=await Promise.allSettled([
+    const [remoteRes,localRes]=await Promise.allSettled([
       fetch(`${CFG.simklApi}?lang=${encodeURIComponent(LANG)}`,{cache:'no-store'}).then(async r=>({ok:r.ok,status:r.status,data:await r.json()})),
       fetchLocalSimkl()
     ]);
-    const localData=localLive.status==='fulfilled'?localLive.value:null;
-    if(localData&&localData.live&&!isBannedWatch(localData.title)){
-      renderWatch(localData);watchShown=true;
-      return;
-    }
-    if(localData&&localData.title&&!isBannedWatch(localData.title)){
-      renderWatch(localData);watchShown=true;
-      try{localStorage.setItem('lastWatch',JSON.stringify(localData))}catch{}
-      return;
-    }
-    if(remoteRes.status!=='fulfilled')throw new Error(T('simklDown'));
-    const {ok,status,data}=remoteRes.value;
-    if(!ok||data?.error)throw new Error(data?.error||`Simkl HTTP ${status}`);
-    if(isBannedWatch(data?.title)){
-      try{
-        const c=JSON.parse(localStorage.getItem('lastWatch')||'null');
-        if(c&&c.title&&!isBannedWatch(c.title)){c.live=false;renderWatch(c);watchShown=true;return}
-      }catch{}
-      renderWatch(null);return;
-    }
-    renderWatch(data);watchShown=true;if(data&&data.title&&!data.stale){try{localStorage.setItem('lastWatch',JSON.stringify(data))}catch{}}
+    const local=localRes.status==='fulfilled'&&localRes.value&&localRes.value.title?localRes.value:null;
+    const remoteVal=remoteRes.status==='fulfilled'?remoteRes.value:null;
+    const remote=remoteVal&&remoteVal.ok&&!remoteVal.data?.error&&remoteVal.data?.title?remoteVal.data:null;
+    const show=w=>{renderWatch(w);watchShown=true;if(!w.live&&!w.stale){try{localStorage.setItem('lastWatch',JSON.stringify(w))}catch{}}};
+    if(local&&local.live){show(local);return}
+    if(remote&&remote.live){show(remote);return}
+    const pool=[local,remote].filter(Boolean);
+    if(pool.length){show(pool.sort((x,y)=>watchTs(y)-watchTs(x))[0]);return}
+    if(!remoteVal)throw new Error(T('simklDown'));
+    if(!remoteVal.ok||remoteVal.data?.error)throw new Error(remoteVal.data?.error||`Simkl HTTP ${remoteVal.status}`);
+    renderWatch(remoteVal.data);watchShown=true;
   }catch(e){
     if(watchShown)return;
-    try{const c=JSON.parse(localStorage.getItem('lastWatch')||'null');if(c&&c.title&&!isBannedWatch(c.title)){c.live=false;renderWatch(c);watchShown=true;return}}catch{}
+    try{const c=JSON.parse(localStorage.getItem('lastWatch')||'null');if(c&&c.title){c.live=false;renderWatch(c);watchShown=true;return}}catch{}
     renderWatch(null);$('w-pill').textContent=T('apiError');$('w-title').textContent=T('simklDown');$('w-meta').textContent=e.message||T('simklHint');
   }
 }
