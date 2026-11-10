@@ -27,7 +27,7 @@ const KNOWN_COVERS = {
   payday3: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1272080/header.jpg',
   needforspeedmostwanted: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1262560/header.jpg',
   needforspeedmostwanted510: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1262560/header.jpg',
-  approximatelyup: 'https://cdn.cloudflare.steamstatic.com/steam/apps/3904850/header.jpg',
+  approximatelyup: 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3904850/d91f2e97c92cb98f97b3c773ff1e2d84bf6bc127/header.jpg',
   lemansultimate: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2399420/header.jpg',
   efootballpes2021seasonupdate: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1259970/header.jpg',
   efootballpes2021: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1259970/header.jpg',

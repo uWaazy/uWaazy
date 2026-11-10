@@ -123,17 +123,35 @@ def load_imdb_map():
         pass
 
 
+def get_active_profile_index():
+    try:
+        prof_path = os.path.join(NUVIO_DIR, "nuvio_profiles.properties")
+        if os.path.isfile(prof_path):
+            raw = open(prof_path, encoding="utf-8", errors="ignore").read()
+            m = re.search(r"^profiles=(.+)$", raw, flags=re.M)
+            if m:
+                d = json.loads(unescape_java_prop(m.group(1)))
+                idx = d.get("activeProfileIndex")
+                if idx is not None:
+                    return int(idx)
+    except Exception:
+        pass
+    return 1
+
+
 def read_nuvio_entries():
     try:
         if not os.path.isfile(NUVIO_PROGRESS_PATH):
             return []
         raw = open(NUVIO_PROGRESS_PATH, encoding="utf-8", errors="ignore").read()
-        entries = []
-        for m in re.finditer(r"^watch_progress_\d+=(.+)$", raw, flags=re.M):
-            data = json.loads(unescape_java_prop(m.group(1)))
-            for e in data.get("entries") or []:
-                if isinstance(e, dict):
-                    entries.append(e)
+        target_idx = get_active_profile_index()
+        m = re.search(rf"^watch_progress_{target_idx}=(.+)$", raw, flags=re.M)
+        if not m:
+            m = re.search(r"^watch_progress_1=(.+)$", raw, flags=re.M)
+        if not m:
+            return []
+        data = json.loads(unescape_java_prop(m.group(1)))
+        entries = [e for e in (data.get("entries") or []) if isinstance(e, dict) and not re.search(r"resident\s*evil", str(e.get("title") or ""), re.I)]
         entries.sort(key=lambda x: int(x.get("lastUpdatedEpochMs") or 0), reverse=True)
         return entries
     except Exception:
@@ -457,7 +475,13 @@ class LocalBridgeHandler(BaseHTTPRequestHandler):
         else:
             STATE["live"] = False
             STATE["item"] = None
-            self.wfile.write(json.dumps({"live": False}).encode("utf-8"))
+            last_item = get_last_watched_nuvio()
+            if last_item:
+                out = format_for_lang(last_item, lang)
+                out["live"] = False
+                self.wfile.write(json.dumps(out).encode("utf-8"))
+            else:
+                self.wfile.write(json.dumps({"live": False}).encode("utf-8"))
 
 
 def start_http_server():

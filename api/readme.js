@@ -670,7 +670,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', policy);
     return res.status(200).send(svg);
   };
-  const CACHE_POLICY = 'public, max-age=60, s-maxage=120, stale-while-revalidate=600';
+  const CACHE_POLICY = 'public, max-age=180, s-maxage=300, stale-while-revalidate=86400';
 
   const triggerBackgroundRender = () => {
     let job = inflight.get(lang);
@@ -689,7 +689,7 @@ export default async function handler(req, res) {
   };
 
   const memHit = svgMem.get(lang);
-  if (memHit && Date.now() - memHit.at < 15000) {
+  if (memHit && Date.now() - memHit.at < 30000) {
     return send(memHit.svg, CACHE_POLICY);
   }
   if (memHit && memHit.svg) {
@@ -697,7 +697,7 @@ export default async function handler(req, res) {
     return send(memHit.svg, CACHE_POLICY);
   }
 
-  const redisHit = await Promise.race([loadLastGood(lang), sleep(1000).then(() => null)]);
+  const redisHit = await Promise.race([loadLastGood(lang), sleep(800).then(() => null)]);
   if (redisHit && redisHit.svg) {
     svgMem.set(lang, redisHit);
     triggerBackgroundRender();
@@ -705,8 +705,9 @@ export default async function handler(req, res) {
   }
 
   const job = triggerBackgroundRender();
-  const svg = await Promise.race([job.catch(() => null), sleep(3800).then(() => null)]);
+  const svg = await Promise.race([job.catch(() => null), sleep(2400).then(() => null)]);
   if (svg) return send(svg, CACHE_POLICY);
 
+  if (redisHit?.svg) return send(redisHit.svg, CACHE_POLICY);
   return send(PLACEHOLDER(lang), 'public, max-age=0, s-maxage=2, stale-while-revalidate=10');
 }

@@ -478,7 +478,7 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
 const Q=new URLSearchParams(location.search);
 if(Q.has('nobg')||Q.has('embed'))document.body.classList.add('no-bg');
 const isLocalHost=Boolean(['localhost','127.0.0.1','::1'].includes(location.hostname)||location.hostname.endsWith('.local'));
-const CFG={simklApi:'/api/simkl',localSimkl:isLocalHost?'http://127.0.0.1:18095/simkl':null,demo:!!window.PREVIEW_DEMO||Q.has('demo'),ghUser:'uWaazy'};
+const CFG={simklApi:'/api/simkl',localSimkl:'http://127.0.0.1:18095/simkl',demo:!!window.PREVIEW_DEMO||Q.has('demo'),ghUser:'uWaazy'};
 const $=id=>document.getElementById(id);
 
 const I18N={
@@ -952,9 +952,10 @@ async function fetchLocalSimkl(){
     const r=await fetch(`${CFG.localSimkl}?lang=${encodeURIComponent(LANG)}`,{cache:'no-store',signal:AbortSignal.timeout(1400)});
     if(!r.ok)return null;
     const d=await r.json();
-    return d&&d.live&&d.title?d:null;
+    return d&&d.title?d:null;
   }catch{return null}
 }
+const isBannedWatch=t=>/resident\s*evil/i.test(String(t||''));
 async function loadWatch(){
   try{if(CFG.demo){renderWatch(DEMO_W);return}
     const [remoteRes,localLive]=await Promise.allSettled([
@@ -962,20 +963,56 @@ async function loadWatch(){
       fetchLocalSimkl()
     ]);
     const localData=localLive.status==='fulfilled'?localLive.value:null;
-    if(localData&&localData.live){
+    if(localData&&localData.live&&!isBannedWatch(localData.title)){
       renderWatch(localData);watchShown=true;
+      return;
+    }
+    if(localData&&localData.title&&!isBannedWatch(localData.title)){
+      renderWatch(localData);watchShown=true;
+      try{localStorage.setItem('lastWatch',JSON.stringify(localData))}catch{}
       return;
     }
     if(remoteRes.status!=='fulfilled')throw new Error(T('simklDown'));
     const {ok,status,data}=remoteRes.value;
     if(!ok||data?.error)throw new Error(data?.error||`Simkl HTTP ${status}`);
+    if(isBannedWatch(data?.title)){
+      try{
+        const c=JSON.parse(localStorage.getItem('lastWatch')||'null');
+        if(c&&c.title&&!isBannedWatch(c.title)){c.live=false;renderWatch(c);watchShown=true;return}
+      }catch{}
+      renderWatch(null);return;
+    }
     renderWatch(data);watchShown=true;if(data&&data.title&&!data.stale){try{localStorage.setItem('lastWatch',JSON.stringify(data))}catch{}}
   }catch(e){
     if(watchShown)return;
-    try{const c=JSON.parse(localStorage.getItem('lastWatch')||'null');if(c&&c.title){c.live=false;renderWatch(c);watchShown=true;return}}catch{}
+    try{const c=JSON.parse(localStorage.getItem('lastWatch')||'null');if(c&&c.title&&!isBannedWatch(c.title)){c.live=false;renderWatch(c);watchShown=true;return}}catch{}
     renderWatch(null);$('w-pill').textContent=T('apiError');$('w-title').textContent=T('simklDown');$('w-meta').textContent=e.message||T('simklHint');
   }
 }
+
+const GAME_COVERS={
+  payday3:'https://cdn.cloudflare.steamstatic.com/steam/apps/1272080/header.jpg',
+  needforspeedmostwanted:'https://cdn.cloudflare.steamstatic.com/steam/apps/1262560/header.jpg',
+  needforspeedmostwanted510:'https://cdn.cloudflare.steamstatic.com/steam/apps/1262560/header.jpg',
+  approximatelyup:'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3904850/d91f2e97c92cb98f97b3c773ff1e2d84bf6bc127/header.jpg',
+  lemansultimate:'https://cdn.cloudflare.steamstatic.com/steam/apps/2399420/header.jpg',
+  efootballpes2021seasonupdate:'https://cdn.cloudflare.steamstatic.com/steam/apps/1259970/header.jpg',
+  efootballpes2021:'https://cdn.cloudflare.steamstatic.com/steam/apps/1259970/header.jpg',
+  assettocorsa:'https://cdn.cloudflare.steamstatic.com/steam/apps/244210/header.jpg',
+  assettocorsacompetizione:'https://cdn.cloudflare.steamstatic.com/steam/apps/805550/header.jpg',
+  eldenring:'https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg',
+  hollowknight:'https://cdn.cloudflare.steamstatic.com/steam/apps/367520/header.jpg'
+};
+const resolveGameCover=g=>{
+  if(!g)return null;
+  if(g.cover)return g.cover;
+  const k=String(g.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(GAME_COVERS[k])return GAME_COVERS[k];
+  for(const [ck,u] of Object.entries(GAME_COVERS)){
+    if(k.length>=5&&(k.includes(ck)||ck.includes(k)))return u;
+  }
+  return null;
+};
 
 const DEMO_G={now:null,recent:[{name:'Assetto Corsa Competizione',cover:null,endedAt:new Date(Date.now()-21*6e4).toISOString(),hours:393.6},{name:'Elden Ring',endedAt:new Date(Date.now()-30*36e5).toISOString(),hours:212},{name:'Hollow Knight',endedAt:new Date(Date.now()-96*36e5).toISOString(),hours:64.2}]};
 let gtick;
@@ -988,10 +1025,11 @@ function renderGames(d){
     const playedAt=main.endedAt||main.playedAt;
     $('g-meta').textContent=[playedAt?ago(playedAt):T('recently'),main.hours&&`${nf(main.hours)} h ${T('total')}`].filter(Boolean).join(' · ')}
   if(!main){pill.textContent=T('idle');pill.className='pill';$('g-title').textContent=T('noGames');$('g-meta').textContent=T('syncHint');$('g-poster').style.backgroundImage='';$('g-poster').textContent='🎮';return}
-  $('g-title').textContent=main.name;$('g-poster').style.backgroundImage='';$('g-poster').textContent='🎮';bgSafe($('g-poster'),main.cover);
-  if(main.cover){BG.game=main.cover;pickBg()}
+  const mainCover=resolveGameCover(main);
+  $('g-title').textContent=main.name;$('g-poster').style.backgroundImage='';$('g-poster').textContent='🎮';bgSafe($('g-poster'),mainCover);
+  if(mainCover){BG.game=mainCover;pickBg()}
   list.slice(0,2).forEach(x=>{const e=document.createElement('div');e.className='mini';
-    const p=document.createElement('div');p.className='poster';p.textContent='🎮';bgSafe(p,x.cover);
+    const p=document.createElement('div');p.className='poster';p.textContent='🎮';bgSafe(p,resolveGameCover(x));
     const n=document.createElement('div');n.textContent=x.name;const t=document.createElement('span');t.textContent=x.endedAt?ago(x.endedAt):'';
     e.append(p,n,t);more.append(e)});
 }

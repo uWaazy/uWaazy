@@ -10,7 +10,7 @@
       ]
     },
     { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }] },
-    { "source": "/api/readme", "headers": [{ "key": "Cache-Control", "value": "public, max-age=60, s-maxage=120, stale-while-revalidate=600" }] },
-    { "source": "/readme.svg", "headers": [{ "key": "Cache-Control", "value": "public, max-age=60, s-maxage=120, stale-while-revalidate=600" }] }
+    { "source": "/api/readme", "headers": [{ "key": "Cache-Control", "value": "public, max-age=180, s-maxage=300, stale-while-revalidate=86400" }] },
+    { "source": "/readme.svg", "headers": [{ "key": "Cache-Control", "value": "public, max-age=180, s-maxage=300, stale-while-revalidate=86400" }] }
   ]
 }
