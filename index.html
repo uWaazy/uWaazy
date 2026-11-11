@@ -598,7 +598,7 @@ function ago(iso){const s=Math.max(0,(Date.now()-new Date(iso))/1e3);
   return rtf.format(-Math.floor(h/24),'day')}
 const mmss=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=String(s%60).padStart(2,'0');return h>0?`${h}:${String(m).padStart(2,'0')}:${sec}`:`${m}:${sec}`};
 const bg=(el,url)=>{if(url){el.style.backgroundImage=`url("${url}")`;el.textContent=''}};
-const bgSafe=(el,url)=>{if(!url)return;const i=new Image();i.onload=()=>{el.style.backgroundImage=`url("${url}")`;el.textContent=''};i.src=url};
+const bgSafe=(el,url,fallbackText='🎮')=>{if(!url){el.style.backgroundImage='';el.textContent=fallbackText;return}const i=new Image();i.onload=()=>{el.style.backgroundImage=`url("${url}")`;el.textContent=''};i.onerror=()=>{el.style.backgroundImage='';el.textContent=fallbackText};i.src=url};
 
 const BG={a:true,cur:null,music:null,movie:null,game:null,idx:0};
 function setBg(url){
@@ -1002,16 +1002,19 @@ const GAME_COVERS={
   assettocorsa:'https://cdn.cloudflare.steamstatic.com/steam/apps/244210/header.jpg',
   assettocorsacompetizione:'https://cdn.cloudflare.steamstatic.com/steam/apps/805550/header.jpg',
   eldenring:'https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg',
-  hollowknight:'https://cdn.cloudflare.steamstatic.com/steam/apps/367520/header.jpg'
+  hollowknight:'https://cdn.cloudflare.steamstatic.com/steam/apps/367520/header.jpg',
+  residentevilrequiem:'https://cdn2.steamgriddb.com/grid/956adefb0eb473d0cd054107659ab6fd.jpg',
+  thelegendofzeldaocarinaoftime:'https://cdn2.steamgriddb.com/grid/f711cc70dbdab88f32389ec84e56a242.png',
+  residentevil0:'https://cdn.cloudflare.steamstatic.com/steam/apps/339340/header.jpg'
 };
 const resolveGameCover=g=>{
   if(!g)return null;
-  if(g.cover)return g.cover;
   const k=String(g.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   if(GAME_COVERS[k])return GAME_COVERS[k];
   for(const [ck,u] of Object.entries(GAME_COVERS)){
     if(k.length>=5&&(k.includes(ck)||ck.includes(k)))return u;
   }
+  if(g.cover&&!g.cover.includes('apps/3764200'))return g.cover;
   return null;
 };
 

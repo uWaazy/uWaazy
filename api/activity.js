@@ -32,8 +32,43 @@ const KNOWN_COVERS = {
   efootballpes2021seasonupdate: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1259970/header.jpg',
   efootballpes2021: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1259970/header.jpg',
   assettocorsa: 'https://cdn.cloudflare.steamstatic.com/steam/apps/244210/header.jpg',
-  assettocorsacompetizione: 'https://cdn.cloudflare.steamstatic.com/steam/apps/805550/header.jpg'
+  assettocorsacompetizione: 'https://cdn.cloudflare.steamstatic.com/steam/apps/805550/header.jpg',
+  residentevilrequiem: 'https://cdn2.steamgriddb.com/grid/956adefb0eb473d0cd054107659ab6fd.jpg',
+  thelegendofzeldaocarinaoftime: 'https://cdn2.steamgriddb.com/grid/f711cc70dbdab88f32389ec84e56a242.png',
+  residentevil0: 'https://cdn.cloudflare.steamstatic.com/steam/apps/339340/header.jpg'
 };
+
+const SGDB_KEY = envClean(process.env.STEAMGRIDDB_API_KEY) || 'c10b7970c0ba715cf4eb2c5e1cfcdf90';
+
+async function steamGridDbCover(name) {
+  if (!name || !SGDB_KEY) return null;
+  const cleanTerm = String(name || '').replace(/[™®:–—]/g, ' ').replace(/\s+/g, ' ').trim();
+  const terms = [cleanTerm, cleanTerm !== name ? name : null].filter(Boolean);
+  for (const t of terms) {
+    try {
+      const r = await fetch('https://www.steamgriddb.com/api/v2/search/autocomplete/' + encodeURIComponent(t), {
+        headers: { Authorization: `Bearer ${SGDB_KEY}` },
+        signal: AbortSignal.timeout(3500)
+      });
+      if (!r.ok) continue;
+      const j = await r.json();
+      const hits = j?.data || [];
+      const gameId = hits[0]?.id;
+      if (!gameId) continue;
+      const gr = await fetch(`https://www.steamgriddb.com/api/v2/grids/game/${gameId}?dimensions=600x900,342x482,660x930,512x512,1024x1024`, {
+        headers: { Authorization: `Bearer ${SGDB_KEY}` },
+        signal: AbortSignal.timeout(3500)
+      });
+      if (!gr.ok) continue;
+      const gj = await gr.json();
+      const grids = gj?.data || [];
+      const best = grids.find(g => g.url || g.thumb);
+      const url = best?.url || best?.thumb || null;
+      if (url && (await headOk(url))) return url;
+    } catch {}
+  }
+  return null;
+}
 
 async function headOk(url) {
   try {
@@ -79,10 +114,19 @@ async function lookupCover(game) {
     if (key.length >= 6 && (key.includes(k) || k.includes(key))) return url;
   }
   const id = steamIdOf(game.cover);
-  if (id) { const v = await steamHeader(id); if (v) return v; }
-  else if (game.cover && await headOk(game.cover)) return game.cover;
+  if (id) {
+    const v = await steamHeader(id);
+    if (v) return v;
+  }
   const found = await steamSearchId(game.name);
-  return found ? await steamHeader(found) : null;
+  if (found) {
+    const v = await steamHeader(found);
+    if (v) return v;
+  }
+  const sgdb = await steamGridDbCover(game.name);
+  if (sgdb) return sgdb;
+  if (game.cover && !game.cover.includes('apps/3764200') && (await headOk(game.cover))) return game.cover;
+  return null;
 }
 async function resolveCover(game, { force = false } = {}) {
   if (!game?.name) return game?.cover || null;
@@ -92,11 +136,11 @@ async function resolveCover(game, { force = false } = {}) {
     if (key.length >= 6 && (key.includes(k) || k.includes(key))) return url;
   }
   const hit = coverMemo.get(key);
-  if (!force && hit && hit.url && Date.now() - hit.at < 12 * 3600e3) return hit.url;
+  if (!force && hit && hit.url && !hit.url.includes('apps/3764200') && Date.now() - hit.at < 12 * 3600e3) return hit.url;
   if (!force && URL_ && TOK) {
     try {
       const [c] = await redis([['GET', 'hub:cover:' + key]]);
-      if (c && c !== '-') { coverMemo.set(key, { at: Date.now(), url: c }); return c; }
+      if (c && c !== '-' && !c.includes('apps/3764200')) { coverMemo.set(key, { at: Date.now(), url: c }); return c; }
     } catch {}
   }
   const url = await lookupCover(game);
@@ -229,11 +273,11 @@ export default async function handler(req, res) {
         Promise.all([...recent, ...(now ? [now] : [])].map(async g => {
           const resolved = await resolveCover(g);
           if (resolved) {
-            if (!g.cover) healedAny = true;
+            if (!g.cover || g.cover !== resolved) healedAny = true;
             g.cover = resolved;
           }
         })),
-        new Promise(r => setTimeout(r, 3500))
+        new Promise(r => setTimeout(r, 4500))
       ]);
       if (healedAny && pushed.length && URL_ && TOK) {
         try {
