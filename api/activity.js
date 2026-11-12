@@ -241,13 +241,15 @@ async function fetchYgp() {
 }
 const sameName = (a, b) => a.name.toLowerCase().replace(/[^a-z0-9]/g, '') === b.name.toLowerCase().replace(/[^a-z0-9]/g, '');
 function mergeRecent(...lists) {
+  const isBad = u => !u || u.includes('apps/3764200');
   const out = [];
   for (const g of lists.flat()) {
     const i = out.findIndex(x => sameName(x, g));
     if (i < 0) out.push({ ...g });
     else {
       const a = out[i], newer = (Date.parse(g.endedAt || 0) || 0) > (Date.parse(a.endedAt || 0) || 0);
-      out[i] = { ...(newer ? { ...a, ...g } : { ...g, ...a }), cover: a.cover || g.cover, hours: (newer ? g.hours : a.hours) || a.hours || g.hours };
+      const pickCover = !isBad(g.cover) ? g.cover : (!isBad(a.cover) ? a.cover : null);
+      out[i] = { ...(newer ? { ...a, ...g } : { ...g, ...a }), cover: pickCover, hours: (newer ? g.hours : a.hours) || a.hours || g.hours };
     }
   }
   const dated = out.filter(g => g.endedAt).sort((a, b) => Date.parse(b.endedAt) - Date.parse(a.endedAt));
@@ -271,7 +273,8 @@ export default async function handler(req, res) {
       let healedAny = false;
       await Promise.race([
         Promise.all([...recent, ...(now ? [now] : [])].map(async g => {
-          const resolved = await resolveCover(g);
+          const force = !g.cover || g.cover.includes('apps/3764200');
+          const resolved = await resolveCover(g, { force });
           if (resolved) {
             if (!g.cover || g.cover !== resolved) healedAny = true;
             g.cover = resolved;
@@ -301,7 +304,9 @@ export default async function handler(req, res) {
     const b = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
     const name = clean(b.name);
     if (!name) return res.status(400).json({ error: 'name required' });
-    const game = { name, cover: cover(clean(b.source, 20), clean(b.sourceId, 12)) };
+    const isBadCover = id => !id || id === '3764200';
+    const initialCover = isBadCover(clean(b.sourceId, 12)) ? null : cover(clean(b.source, 20), clean(b.sourceId, 12));
+    const game = { name, cover: initialCover };
     game.cover = await resolveCover(game, { force: true });
 
     if (b.state === 'playing') {
