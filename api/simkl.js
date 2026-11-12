@@ -336,7 +336,7 @@ async function saveLast(item) {
 }
 
 const NUVIO_WEAK_GRACE_MS = 45e3;
-const NUVIO_LIVE_SLACK_SEC = 600;
+const NUVIO_LIVE_SLACK_SEC = 120;
 
 const S = { acts: null, actsAt: 0, sig: '', P: 0, addonLast: null, paused: null, lastDone: null, prevPaused: null, live: null, pushedLive: null, out: null, blockedUntil: 0 };
 const BACKOFF_MS = 20 * 60e3;
@@ -703,7 +703,29 @@ export default async function handler(req, res) {
       i18n: meta.i18n, url: `https://simkl.com/${encodeURIComponent(uid)}/dashboard/`, source: 'nuvio-addon'
     };
   };
-  const nuvioLive = async () => null;
+  const nuvioLive = async cur => {
+    if (!cur?.imdbId || !cur.at) return null;
+    const now = Date.now();
+    diag.nuvio = { key: cur.key, kind: cur.kind, ageSec: Math.round((now - cur.at) / 1000) };
+    if (cur.kind !== 'subtitles' && now - cur.at < NUVIO_WEAK_GRACE_MS) return null;
+    const base = await nuvioItem(cur);
+    if (!base) return null;
+    const elapsed = (now - cur.at) / 1000;
+    if (elapsed > base.durationSec + NUVIO_LIVE_SLACK_SEC) return null;
+    return { ...base, live: true, paused: false, watchedAt: new Date(cur.at).toISOString(), startedAt: cur.at,
+      elapsedSec: Math.round(elapsed), progress: Math.min(99, Math.round(elapsed / base.durationSec * 100)), estimated: true };
+  };
+  const addonStopTs = live => {
+    const imdbOf = x => x?.imdbId || x?.media?.ids?.imdb || null;
+    const same = x => {
+      if (!x) return false;
+      const sameTitle = (imdbOf(x) && imdbOf(x) === live.imdbId) || (x.tmdbId && live.tmdbId && String(x.tmdbId) === String(live.tmdbId));
+      if (!sameTitle) return false;
+      return live.type === 'movie' || (Number(x.season) === Number(live.season) && Number(x.number) === Number(live.number));
+    };
+    const hits = [S.paused, S.lastDone].filter(x => same(x) && ts(x.watchedAt) >= live.startedAt - 60e3);
+    return hits.length ? Math.max(...hits.map(x => ts(x.watchedAt))) : null;
+  };
   const nuvioLast = async (cur, hist) => {
     const now = Date.now();
     const curUsable = cur?.imdbId && (cur.kind === 'subtitles' || now - cur.at >= NUVIO_WEAK_GRACE_MS);
@@ -711,7 +733,8 @@ export default async function handler(req, res) {
     if (!top?.imdbId) return null;
     const base = await nuvioItem(top);
     if (!base) return null;
-    const endMs = top.endedAt ? Math.min(top.endedAt, now) : top.at;
+    const fullEnd = top.at + base.durationSec * 1000;
+    const endMs = Math.min(top.endedAt ? Math.min(top.endedAt, fullEnd) : fullEnd, now);
     return { ...base, live: false, paused: false, watchedAt: new Date(endMs).toISOString() };
   };
   const present = async () => {
@@ -769,6 +792,7 @@ export default async function handler(req, res) {
     }
   };
 
+  let addonLive = null;
   try {
     const [rawLive, st, last, bl, nuvioCurRaw, nuvioHistRaw] = (await rcmd(['GET', 'hub:simkl:live'], ['GET', 'hub:simkl:state'], ['GET', 'hub:simkl:last'], ['GET', 'hub:simkl:blocked'], ['GET', 'hub:nuvio:cur'], ['GET', 'hub:nuvio:hist'])) || [];
     const redisLive = hydratePushedLive(jparse(rawLive) || S.pushedLive);
@@ -784,11 +808,7 @@ export default async function handler(req, res) {
     }
 
     const nuvioCur = jparse(nuvioCurRaw);
-    const nuvioLiveItem = await nuvioLive(nuvioCur);
-    if (nuvioLiveItem) {
-      diag.picked = 'nuvio-addon-live';
-      return reply(nuvioLiveItem, false);
-    }
+    addonLive = await nuvioLive(nuvioCur);
     S.addonLast = await nuvioLast(nuvioCur, jparse(nuvioHistRaw));
 
     const scraped = await scrapeLive(uid, diag);
@@ -799,6 +819,7 @@ export default async function handler(req, res) {
     }
 
     if (!token) {
+      if (addonLive) { diag.picked = 'nuvio-addon-live'; return reply(addonLive, false); }
       const pub = await getPublicRecent();
       if (!pub) return reply({ live: false, title: null, source: 'empty-history' });
       return reply(pub, true);
@@ -818,7 +839,9 @@ export default async function handler(req, res) {
     if (savedLast?.title && ts(savedLast.watchedAt) > ts(S.out?.watchedAt)) S.out = savedLast;
     if (Date.now() < S.blockedUntil) {
       diag.blockedForMin = Math.ceil((S.blockedUntil - Date.now()) / 60e3);
-      return S.out ? reply({ ...S.out, stale: true }, false) : res.status(503).json({ error: 'Simkl daily API limit reached; retrying later.', ...(debug ? { _debug: diag } : {}) });
+      if (addonLive) { diag.picked = 'nuvio-addon-live'; return reply(addonLive, false); }
+      const freshest = [S.out, S.addonLast].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
+      return freshest ? reply({ ...freshest, stale: true }, false) : res.status(503).json({ error: 'Simkl daily API limit reached; retrying later.', ...(debug ? { _debug: diag } : {}) });
     }
 
     if (!S.acts || Date.now() - S.actsAt > 10e3) { S.acts = await simklGet('/sync/activities'); S.actsAt = Date.now(); }
@@ -834,6 +857,11 @@ export default async function handler(req, res) {
       await rebuild(P, W); S.sig = sig; S.rebuiltAt = Date.now();
       await rcmd(['SET', 'hub:simkl:state', JSON.stringify({ sig: S.sig, paused: S.paused, lastDone: S.lastDone, prevPaused: S.prevPaused, live: S.live, rebuiltAt: S.rebuiltAt }), 'EX', 30 * 86400]);
     }
+    if (addonLive) {
+      const stopAt = addonStopTs(addonLive);
+      if (!stopAt) { diag.picked = 'nuvio-addon-live'; diag.apiCalls = apiCalls; return reply(addonLive, false); }
+      diag.addonStoppedBySimkl = new Date(stopAt).toISOString();
+    }
     const out = await present();
     diag.apiCalls = apiCalls;
     return reply(out);
@@ -844,16 +872,15 @@ export default async function handler(req, res) {
       S.blockedUntil = Date.now() + BACKOFF_MS;
       await rcmd(['SET', 'hub:simkl:blocked', String(S.blockedUntil), 'EX', Math.ceil(BACKOFF_MS / 1000)]);
     }
-    const pub = await getPublicRecent();
-    if (pub) {
-      diag.picked = 'public-fallback';
-      diag.apiCalls = apiCalls;
-      return reply(pub, true);
-    }
     diag.apiCalls = apiCalls;
     if (error?.status === 401) diag.tokenExpired = true;
-    const fallback = [S.out, S.addonLast].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
-    if (fallback) return reply({ ...fallback, stale: true }, false);
+    if (addonLive) { diag.picked = 'nuvio-addon-live'; return reply(addonLive, false); }
+    const pub = await getPublicRecent();
+    const fallback = [pub, S.out, S.addonLast].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
+    if (fallback) {
+      diag.picked = fallback === pub ? 'public-fallback' : fallback.source;
+      return reply(fallback === pub ? fallback : { ...fallback, stale: true }, fallback === pub);
+    }
     return res.status(502).json({ error: error?.message || 'Simkl request failed', ...(debug ? { _debug: diag } : {}) });
   }
 }

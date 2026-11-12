@@ -1,12 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 
 const envClean = v => String(v || '').trim().replace(/^["'`]+|["'`]+$/g, '').trim();
-const ALLOWED_TOKENS = [
-  'a8F3k9Lp2X7mQ4vZ',
-  envClean(process.env.NUVIO_ADDON_TOKEN),
-  envClean(process.env.NUVIO_SECRET),
-  envClean(process.env.HUB_SECRET)
-].filter(t => t && t.length >= 8);
+const ADDON_TOKEN = envClean(process.env.NUVIO_ADDON_TOKEN);
 
 let R_URL = envClean(process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL);
 if (R_URL && !/^https?:\/\//i.test(R_URL)) R_URL = 'https://' + R_URL;
@@ -33,13 +28,10 @@ const rcmd = async (...cmds) => {
 const jparse = v => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
 
 const okSecret = candidate => {
-  if (!candidate) return false;
+  if (!candidate || ADDON_TOKEN.length < 16) return false;
   const candBuf = Buffer.from(String(candidate));
-  for (const tok of ALLOWED_TOKENS) {
-    const tokBuf = Buffer.from(tok);
-    if (candBuf.length === tokBuf.length && timingSafeEqual(candBuf, tokBuf)) return true;
-  }
-  return false;
+  const tokBuf = Buffer.from(ADDON_TOKEN);
+  return candBuf.length === tokBuf.length && timingSafeEqual(candBuf, tokBuf);
 };
 
 const MANIFEST = {
@@ -106,6 +98,7 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET') return res.status(405).end();
+  if (ADDON_TOKEN.length < 16) return res.status(503).json({ error: 'NUVIO_ADDON_TOKEN missing or shorter than 16 characters' });
   const segs = routeSegments(req);
   if (!okSecret(segs[0] || '')) return res.status(404).end();
   const path = segs.slice(1).join('/');
