@@ -8,7 +8,7 @@ const PROD_ORIGIN = 'https://uwaazy.vercel.app';
 const UA = 'uWaazy-hub-svg/1.5';
 const FRESH_MS = 8000;
 const DEADLINE_MS = 1600;
-const IMG_BUDGET_MS = 800;
+const IMG_BUDGET_MS = 1200;
 const STALE_FIRST_MS = 45000;
 const LAST_GOOD_TTL = 6 * 3600;
 const CHUNK = 380000;
@@ -85,7 +85,7 @@ async function toDataUri(url) {
     if (!r.ok) return '';
     const ct = (r.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
     const buf = Buffer.from(await r.arrayBuffer());
-    if (!buf.length || buf.length > 90000) return '';
+    if (!buf.length || buf.length > 500000) return '';
     const val = `data:${ct};base64,${buf.toString('base64')}`;
     imgMemo.set(fullUrl, { at: Date.now(), val });
     return val;
@@ -670,7 +670,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', policy);
     return res.status(200).send(svg);
   };
-  const CACHE_POLICY = 'public, max-age=180, s-maxage=300, stale-while-revalidate=86400';
+  const CACHE_POLICY = 'public, max-age=0, s-maxage=30, stale-while-revalidate=30, must-revalidate';
 
   const triggerBackgroundRender = () => {
     let job = inflight.get(lang);
@@ -688,26 +688,23 @@ export default async function handler(req, res) {
     return job;
   };
 
+  const FRESH_THRESHOLD_MS = 25000;
   const memHit = svgMem.get(lang);
-  if (memHit && Date.now() - memHit.at < 30000) {
-    return send(memHit.svg, CACHE_POLICY);
-  }
-  if (memHit && memHit.svg) {
-    triggerBackgroundRender();
+  if (memHit && Date.now() - memHit.at < FRESH_THRESHOLD_MS) {
     return send(memHit.svg, CACHE_POLICY);
   }
 
-  const redisHit = await Promise.race([loadLastGood(lang), sleep(800).then(() => null)]);
-  if (redisHit && redisHit.svg) {
+  const redisHit = await Promise.race([loadLastGood(lang), sleep(350).then(() => null)]);
+  if (redisHit && redisHit.svg && Date.now() - (redisHit.at || 0) < FRESH_THRESHOLD_MS) {
     svgMem.set(lang, redisHit);
-    triggerBackgroundRender();
     return send(redisHit.svg, CACHE_POLICY);
   }
 
   const job = triggerBackgroundRender();
-  const svg = await Promise.race([job.catch(() => null), sleep(2400).then(() => null)]);
+  const svg = await Promise.race([job.catch(() => null), sleep(2200).then(() => null)]);
   if (svg) return send(svg, CACHE_POLICY);
 
+  if (memHit?.svg) return send(memHit.svg, CACHE_POLICY);
   if (redisHit?.svg) return send(redisHit.svg, CACHE_POLICY);
-  return send(PLACEHOLDER(lang), 'public, max-age=0, s-maxage=2, stale-while-revalidate=10');
+  return send(PLACEHOLDER(lang), CACHE_POLICY);
 }

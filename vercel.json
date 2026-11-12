@@ -6,7 +6,11 @@
     },
     {
       "source": "/nuvio/:path*",
-      "destination": "/api/nuvio/:path*"
+      "destination": "/api/nuvio?p=:path*"
+    },
+    {
+      "source": "/api/nuvio/:path*",
+      "destination": "/api/nuvio?p=:path*"
     }
   ],
   "headers": [
@@ -33,7 +37,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=180, s-maxage=300, stale-while-revalidate=86400"
+          "value": "public, max-age=0, s-maxage=30, stale-while-revalidate=30, must-revalidate"
         }
       ]
     },
@@ -42,7 +46,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=180, s-maxage=300, stale-while-revalidate=86400"
+          "value": "public, max-age=0, s-maxage=30, stale-while-revalidate=30, must-revalidate"
         }
       ]
     }
