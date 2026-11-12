@@ -1009,12 +1009,12 @@ const GAME_COVERS={
 };
 const resolveGameCover=g=>{
   if(!g)return null;
+  if(g.cover&&!g.cover.includes('apps/3764200'))return g.cover;
   const k=String(g.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   if(GAME_COVERS[k])return GAME_COVERS[k];
   for(const [ck,u] of Object.entries(GAME_COVERS)){
     if(k.length>=5&&(k.includes(ck)||ck.includes(k)))return u;
   }
-  if(g.cover&&!g.cover.includes('apps/3764200'))return g.cover;
   return null;
 };
 

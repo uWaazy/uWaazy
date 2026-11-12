@@ -38,37 +38,12 @@ const KNOWN_COVERS = {
   residentevil0: 'https://cdn.cloudflare.steamstatic.com/steam/apps/339340/header.jpg'
 };
 
-const SGDB_KEY = envClean(process.env.STEAMGRIDDB_API_KEY) || 'c10b7970c0ba715cf4eb2c5e1cfcdf90';
-
-async function steamGridDbCover(name) {
-  if (!name || !SGDB_KEY) return null;
-  const cleanTerm = String(name || '').replace(/[™®:–—]/g, ' ').replace(/\s+/g, ' ').trim();
-  const terms = [cleanTerm, cleanTerm !== name ? name : null].filter(Boolean);
-  for (const t of terms) {
-    try {
-      const r = await fetch('https://www.steamgriddb.com/api/v2/search/autocomplete/' + encodeURIComponent(t), {
-        headers: { Authorization: `Bearer ${SGDB_KEY}` },
-        signal: AbortSignal.timeout(3500)
-      });
-      if (!r.ok) continue;
-      const j = await r.json();
-      const hits = j?.data || [];
-      const gameId = hits[0]?.id;
-      if (!gameId) continue;
-      const gr = await fetch(`https://www.steamgriddb.com/api/v2/grids/game/${gameId}?dimensions=600x900,342x482,660x930,512x512,1024x1024`, {
-        headers: { Authorization: `Bearer ${SGDB_KEY}` },
-        signal: AbortSignal.timeout(3500)
-      });
-      if (!gr.ok) continue;
-      const gj = await gr.json();
-      const grids = gj?.data || [];
-      const best = grids.find(g => g.url || g.thumb);
-      const url = best?.url || best?.thumb || null;
-      if (url && (await headOk(url))) return url;
-    } catch {}
-  }
-  return null;
-}
+const SGDB_KEY = envClean(process.env.STEAMGRIDDB_API_KEY || process.env.SGDB_API_KEY);
+const SGDB_BASE = 'https://www.steamgriddb.com/api/v2';
+const COVER_VER = 'v3';
+const BAD_STEAM_ID = '3764200';
+const GRID_QUERY = 'dimensions=600x900,342x482,660x930&types=static&nsfw=false&humor=false';
+const coverMiss = new Map();
 
 async function headOk(url) {
   try {
@@ -82,74 +57,113 @@ async function jsonGet(url, ms = 3000) {
     return r.ok ? await r.json() : null;
   } catch { return null; }
 }
-async function steamHeader(id) {
-  const direct = `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/header.jpg`;
-  if (await headOk(direct)) return direct;
+async function sgdbGet(path) {
+  if (!SGDB_KEY) return null;
+  try {
+    const r = await fetch(SGDB_BASE + path, { headers: { Authorization: `Bearer ${SGDB_KEY}`, 'User-Agent': 'uWaazy-hub/2.0' }, signal: AbortSignal.timeout(3500) });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j?.success === false ? null : j?.data || null;
+  } catch { return null; }
+}
+async function sgdbSearch(name) {
+  const want = normName(name);
+  const plain = String(name || '').replace(/[™®]/g, '').replace(/\s*[:–—-]\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  for (const term of [...new Set([plain, String(name || '').trim()])].filter(Boolean)) {
+    const hits = await sgdbGet('/search/autocomplete/' + encodeURIComponent(term));
+    if (!Array.isArray(hits) || !hits.length) continue;
+    const exact = hits.find(h => normName(h.name) === want);
+    if (exact) return { id: exact.id, exact: true };
+    const close = hits.find(h => { const n = normName(h.name); return want.length >= 5 && n.length >= 5 && (n.startsWith(want) || want.startsWith(n)); });
+    return { id: (close || hits[0]).id, exact: false };
+  }
+  return null;
+}
+function bestGrid(list) {
+  if (!Array.isArray(list)) return null;
+  const usable = list.filter(g => g?.url && !g.nsfw && !g.humor && !/webm|mp4/i.test(String(g.mime || g.url)));
+  usable.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+  return usable[0]?.url || null;
+}
+async function steamGridDbCover(game) {
+  if (!SGDB_KEY || !game?.name) return null;
+  const sid = steamIdOf(game.cover);
+  const steamId = sid && sid !== BAD_STEAM_ID ? sid : null;
+  const found = await sgdbSearch(game.name);
+  let url = null;
+  if (found?.exact) url = bestGrid(await sgdbGet(`/grids/game/${found.id}?${GRID_QUERY}`));
+  if (!url && steamId) url = bestGrid(await sgdbGet(`/grids/steam/${steamId}?${GRID_QUERY}`));
+  if (!url && found && !found.exact) url = bestGrid(await sgdbGet(`/grids/game/${found.id}?${GRID_QUERY}`));
+  return url && (await headOk(url)) ? url : null;
+}
+async function steamCover(id) {
+  for (const file of ['library_600x900.jpg', 'header.jpg']) {
+    const u = `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/${file}`;
+    if (await headOk(u)) return u;
+  }
   const j = await jsonGet(`https://store.steampowered.com/api/appdetails?appids=${id}&filters=basic`);
   const img = j?.[id]?.data?.header_image;
-  if (img && await headOk(img)) return img;
-  const capsule = `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/capsule_616x353.jpg`;
-  return (await headOk(capsule)) ? capsule : null;
+  return img && (await headOk(img)) ? img : null;
 }
 async function steamSearchId(name) {
-  const cleanTerm = String(name || '').replace(/[™®:–—]/g, ' ').replace(/\s+/g, ' ').trim();
-  const terms = cleanTerm && cleanTerm !== name ? [cleanTerm, name] : [name];
+  const plain = String(name || '').replace(/[™®:–—]/g, ' ').replace(/\s+/g, ' ').trim();
   const want = normName(name);
-  for (const t of terms) {
-    if (!t) continue;
+  for (const t of [...new Set([plain, name])].filter(Boolean)) {
     const j = await jsonGet('https://store.steampowered.com/api/storesearch/?cc=us&l=en&term=' + encodeURIComponent(t));
     const items = j?.items || [];
     const hit = items.find(i => normName(i.name) === want)
-      || items.find(i => { const n = normName(i.name); return want.length >= 5 && n.length >= 5 && (n.startsWith(want) || want.startsWith(n)); })
-      || items[0];
+      || items.find(i => { const n = normName(i.name); return want.length >= 5 && n.length >= 5 && (n.startsWith(want) || want.startsWith(n)); });
     if (hit?.id) return String(hit.id);
   }
   return null;
 }
-async function lookupCover(game) {
-  if (!game?.name) return game?.cover || null;
-  const key = normName(game.name);
+function knownCover(name) {
+  const key = normName(name);
   if (KNOWN_COVERS[key]) return KNOWN_COVERS[key];
   for (const [k, url] of Object.entries(KNOWN_COVERS)) {
     if (key.length >= 6 && (key.includes(k) || k.includes(key))) return url;
   }
-  const id = steamIdOf(game.cover);
-  if (id) {
-    const v = await steamHeader(id);
+  return null;
+}
+async function lookupCover(game) {
+  if (!game?.name) return null;
+  const viaGrid = await steamGridDbCover(game);
+  if (viaGrid) return viaGrid;
+  const sid = steamIdOf(game.cover);
+  if (sid && sid !== BAD_STEAM_ID) {
+    const v = await steamCover(sid);
     if (v) return v;
   }
   const found = await steamSearchId(game.name);
   if (found) {
-    const v = await steamHeader(found);
+    const v = await steamCover(found);
     if (v) return v;
   }
-  const sgdb = await steamGridDbCover(game.name);
-  if (sgdb) return sgdb;
-  if (game.cover && !game.cover.includes('apps/3764200') && (await headOk(game.cover))) return game.cover;
-  return null;
+  if (game.cover && !game.cover.includes(`apps/${BAD_STEAM_ID}`) && (await headOk(game.cover))) return game.cover;
+  return knownCover(game.name);
 }
 async function resolveCover(game, { force = false } = {}) {
   if (!game?.name) return game?.cover || null;
   const key = normName(game.name);
-  if (KNOWN_COVERS[key]) return KNOWN_COVERS[key];
-  for (const [k, url] of Object.entries(KNOWN_COVERS)) {
-    if (key.length >= 6 && (key.includes(k) || k.includes(key))) return url;
-  }
+  const rkey = `hub:cover:${COVER_VER}:${key}`;
   const hit = coverMemo.get(key);
-  if (!force && hit && hit.url && !hit.url.includes('apps/3764200') && Date.now() - hit.at < 12 * 3600e3) return hit.url;
+  if (!force && hit && Date.now() - hit.at < 12 * 3600e3) return hit.url;
+  if (!force && (coverMiss.get(key) || 0) > Date.now()) return knownCover(game.name) || game.cover || null;
   if (!force && URL_ && TOK) {
     try {
-      const [c] = await redis([['GET', 'hub:cover:' + key]]);
-      if (c && c !== '-' && !c.includes('apps/3764200')) { coverMemo.set(key, { at: Date.now(), url: c }); return c; }
+      const [c] = await redis([['GET', rkey]]);
+      if (c && c !== '-') { coverMemo.set(key, { at: Date.now(), url: c }); return c; }
     } catch {}
   }
   const url = await lookupCover(game);
   if (url) {
     coverMemo.set(key, { at: Date.now(), url });
-    if (URL_ && TOK) { try { await redis([['SET', 'hub:cover:' + key, url, 'EX', 30 * 86400]]); } catch {} }
+    coverMiss.delete(key);
+    if (URL_ && TOK) { try { await redis([['SET', rkey, url, 'EX', 30 * 86400]]); } catch {} }
     return url;
   }
-  return null;
+  coverMiss.set(key, Date.now() + 10 * 60e3);
+  return game.cover || null;
 }
 const ok = (a, b) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
 
@@ -273,8 +287,7 @@ export default async function handler(req, res) {
       let healedAny = false;
       await Promise.race([
         Promise.all([...recent, ...(now ? [now] : [])].map(async g => {
-          const force = !g.cover || g.cover.includes('apps/3764200');
-          const resolved = await resolveCover(g, { force });
+          const resolved = await resolveCover(g);
           if (resolved) {
             if (!g.cover || g.cover !== resolved) healedAny = true;
             g.cover = resolved;

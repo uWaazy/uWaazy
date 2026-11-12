@@ -77,7 +77,7 @@ function parseEpisodeCode(epStr, season, number) {
 }
 
 async function resolveTmdbI18n({ title, type, imdbId, tmdbId, season, number, fallbackEpTitle, fallbackPoster }) {
-  if (!title) return null;
+  if (!title && !imdbId && !tmdbId) return null;
   const { season: sNum, number: eNum } = parseEpisodeCode(null, season, number);
   const key = `tmdb:${type}:${imdbId || ''}:${tmdbId || ''}:${title}:${sNum || ''}:${eNum || ''}`;
   return cached(key, META_CACHE_MS, async () => {
@@ -335,7 +335,10 @@ async function saveLast(item) {
   return true;
 }
 
-const S = { acts: null, actsAt: 0, sig: '', P: 0, paused: null, lastDone: null, prevPaused: null, live: null, pushedLive: null, out: null, blockedUntil: 0 };
+const NUVIO_WEAK_GRACE_MS = 45e3;
+const NUVIO_LIVE_SLACK_SEC = 600;
+
+const S = { acts: null, actsAt: 0, sig: '', P: 0, addonLast: null, paused: null, lastDone: null, prevPaused: null, live: null, pushedLive: null, out: null, blockedUntil: 0 };
 const BACKOFF_MS = 20 * 60e3;
 
 const TRAKT_TTL_MS = 5000;
@@ -685,6 +688,43 @@ export default async function handler(req, res) {
       ...extra
     };
   };
+  const nuvioItem = async entry => {
+    if (!entry?.imdbId) return null;
+    const type = entry.type === 'movie' ? 'movie' : 'show';
+    const meta = await resolveTmdbI18n({ title: '', type, imdbId: entry.imdbId, season: entry.season, number: entry.number });
+    const title = meta?.i18n?.en?.title || meta?.i18n?.pt?.title || '';
+    if (!title) return null;
+    const runtimeMin = meta.tmdbRuntimeMin || (type === 'movie' ? 110 : 25);
+    return {
+      title, type, imdbId: entry.imdbId, tmdbId: meta.tmdbId || null,
+      season: entry.season ?? null, number: entry.number ?? null,
+      episode: type === 'movie' ? null : sxe(entry.season, entry.number),
+      episodeTitle: null, runtimeMin, durationSec: runtimeMin * 60, poster: null,
+      i18n: meta.i18n, url: `https://simkl.com/${encodeURIComponent(uid)}/dashboard/`, source: 'nuvio-addon'
+    };
+  };
+  const nuvioLive = async cur => {
+    if (!cur?.imdbId || !cur.at) return null;
+    const now = Date.now();
+    diag.nuvio = { key: cur.key, kind: cur.kind, ageSec: Math.round((now - cur.at) / 1000) };
+    if (cur.kind !== 'subtitles' && now - cur.at < NUVIO_WEAK_GRACE_MS) return null;
+    const base = await nuvioItem(cur);
+    if (!base) return null;
+    const elapsed = (now - cur.at) / 1000;
+    if (elapsed > base.durationSec + NUVIO_LIVE_SLACK_SEC) return null;
+    return { ...base, live: true, paused: false, watchedAt: new Date(cur.at).toISOString(), startedAt: cur.at,
+      elapsedSec: Math.round(elapsed), progress: Math.min(99, Math.round(elapsed / base.durationSec * 100)), estimated: true };
+  };
+  const nuvioLast = async (cur, hist) => {
+    const now = Date.now();
+    const curUsable = cur?.imdbId && (cur.kind === 'subtitles' || now - cur.at >= NUVIO_WEAK_GRACE_MS);
+    const top = curUsable ? cur : (Array.isArray(hist) ? hist[0] : null);
+    if (!top?.imdbId) return null;
+    const base = await nuvioItem(top);
+    if (!base) return null;
+    const endMs = top.endedAt ? Math.min(top.endedAt, top.at + base.durationSec * 1000) : top.at + base.durationSec * 1000;
+    return { ...base, live: false, paused: false, watchedAt: new Date(Math.min(endMs, now)).toISOString() };
+  };
   const present = async () => {
     if (S.live) {
       const c = S.live.cand;
@@ -703,7 +743,7 @@ export default async function handler(req, res) {
         validPaused = null;
       }
     }
-    const pick = [S.lastDone, validPaused, S.out].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
+    const pick = [S.lastDone, validPaused, S.out, S.addonLast].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
     diag.picked = pick ? pick.source : null;
     if (!pick) return { live: false, title: null, source: 'empty-history' };
     return { ...(await finalize(pick, {})), live: false, paused: pick.paused, watchedAt: pick.watchedAt,
@@ -741,7 +781,7 @@ export default async function handler(req, res) {
   };
 
   try {
-    const [rawLive, st, last, bl] = (await rcmd(['GET', 'hub:simkl:live'], ['GET', 'hub:simkl:state'], ['GET', 'hub:simkl:last'], ['GET', 'hub:simkl:blocked'])) || [];
+    const [rawLive, st, last, bl, nuvioCurRaw, nuvioHistRaw] = (await rcmd(['GET', 'hub:simkl:live'], ['GET', 'hub:simkl:state'], ['GET', 'hub:simkl:last'], ['GET', 'hub:simkl:blocked'], ['GET', 'hub:nuvio:cur'], ['GET', 'hub:nuvio:hist'])) || [];
     const redisLive = hydratePushedLive(jparse(rawLive) || S.pushedLive);
     if (redisLive) {
       diag.picked = 'redis-live-push';
@@ -753,6 +793,14 @@ export default async function handler(req, res) {
       diag.picked = 'trakt-live';
       return reply(trakt, false);
     }
+
+    const nuvioCur = jparse(nuvioCurRaw);
+    const nuvioLiveItem = await nuvioLive(nuvioCur);
+    if (nuvioLiveItem) {
+      diag.picked = 'nuvio-addon-live';
+      return reply(nuvioLiveItem, false);
+    }
+    S.addonLast = await nuvioLast(nuvioCur, jparse(nuvioHistRaw));
 
     const scraped = await scrapeLive(uid, diag);
     if (scraped) {

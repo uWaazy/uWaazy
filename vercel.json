@@ -1,16 +1,50 @@
 {
   "rewrites": [
-    { "source": "/readme.svg", "destination": "/api/readme" }
+    {
+      "source": "/readme.svg",
+      "destination": "/api/readme"
+    },
+    {
+      "source": "/nuvio/:token/:path*",
+      "destination": "/api/nuvio?token=:token&p=:path*"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Permissions-Policy", "value": "local-network-access=(), loopback-network=(), local-network=()" }
+        {
+          "key": "Permissions-Policy",
+          "value": "local-network-access=(), loopback-network=(), local-network=()"
+        }
       ]
     },
-    { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }] },
-    { "source": "/api/readme", "headers": [{ "key": "Cache-Control", "value": "public, max-age=180, s-maxage=300, stale-while-revalidate=86400" }] },
-    { "source": "/readme.svg", "headers": [{ "key": "Cache-Control", "value": "public, max-age=180, s-maxage=300, stale-while-revalidate=86400" }] }
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800"
+        }
+      ]
+    },
+    {
+      "source": "/api/readme",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=180, s-maxage=300, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/readme.svg",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=180, s-maxage=300, stale-while-revalidate=86400"
+        }
+      ]
+    }
   ]
 }
