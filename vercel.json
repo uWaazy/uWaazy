@@ -5,8 +5,8 @@
       "destination": "/api/readme"
     },
     {
-      "source": "/nuvio/:token/:path*",
-      "destination": "/api/nuvio?token=:token&p=:path*"
+      "source": "/nuvio/:path*",
+      "destination": "/api/nuvio/:path*"
     }
   ],
   "headers": [
