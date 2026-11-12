@@ -703,18 +703,7 @@ export default async function handler(req, res) {
       i18n: meta.i18n, url: `https://simkl.com/${encodeURIComponent(uid)}/dashboard/`, source: 'nuvio-addon'
     };
   };
-  const nuvioLive = async cur => {
-    if (!cur?.imdbId || !cur.at) return null;
-    const now = Date.now();
-    diag.nuvio = { key: cur.key, kind: cur.kind, ageSec: Math.round((now - cur.at) / 1000) };
-    if (cur.kind !== 'subtitles' && now - cur.at < NUVIO_WEAK_GRACE_MS) return null;
-    const base = await nuvioItem(cur);
-    if (!base) return null;
-    const elapsed = (now - cur.at) / 1000;
-    if (elapsed > base.durationSec + NUVIO_LIVE_SLACK_SEC) return null;
-    return { ...base, live: true, paused: false, watchedAt: new Date(cur.at).toISOString(), startedAt: cur.at,
-      elapsedSec: Math.round(elapsed), progress: Math.min(99, Math.round(elapsed / base.durationSec * 100)), estimated: true };
-  };
+  const nuvioLive = async () => null;
   const nuvioLast = async (cur, hist) => {
     const now = Date.now();
     const curUsable = cur?.imdbId && (cur.kind === 'subtitles' || now - cur.at >= NUVIO_WEAK_GRACE_MS);
@@ -722,8 +711,8 @@ export default async function handler(req, res) {
     if (!top?.imdbId) return null;
     const base = await nuvioItem(top);
     if (!base) return null;
-    const endMs = top.endedAt ? Math.min(top.endedAt, top.at + base.durationSec * 1000) : top.at + base.durationSec * 1000;
-    return { ...base, live: false, paused: false, watchedAt: new Date(Math.min(endMs, now)).toISOString() };
+    const endMs = top.endedAt ? Math.min(top.endedAt, now) : top.at;
+    return { ...base, live: false, paused: false, watchedAt: new Date(endMs).toISOString() };
   };
   const present = async () => {
     if (S.live) {
