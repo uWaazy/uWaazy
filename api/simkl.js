@@ -862,7 +862,9 @@ export default async function handler(req, res) {
       return reply(pub, true);
     }
     diag.apiCalls = apiCalls;
-    if (S.out) return reply({ ...S.out, stale: true }, false);
+    if (error?.status === 401) diag.tokenExpired = true;
+    const fallback = [S.out, S.addonLast].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
+    if (fallback) return reply({ ...fallback, stale: true }, false);
     return res.status(502).json({ error: error?.message || 'Simkl request failed', ...(debug ? { _debug: diag } : {}) });
   }
 }
