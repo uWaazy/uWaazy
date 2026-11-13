@@ -116,6 +116,8 @@ a{color:inherit;text-decoration:none}
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;background:#1d2130;color:var(--muted)}
 .pill.live{background:rgba(52,211,153,.12);color:var(--live)}
 .pill.live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--live);animation:pulse 1.4s infinite}
+.pill.live.paused{background:rgba(251,191,36,.12);color:#fbbf24}
+.pill.live.paused::before{background:#fbbf24;animation:none}
 @keyframes pulse{50%{opacity:.25}}
 .title{font-size:16px;font-weight:700;margin:7px 0 1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .meta{font-size:12.5px;color:var(--muted)}
@@ -490,7 +492,7 @@ en:{liveNow:'LIVE',listening:'Listening',watching:'Watching',playing:'Playing',o
  tiLoved:'Loved',tiLovedTitle:'Loved track on Last.fm',tiFirstPrefix:'1st heard:',tiPlayedOnce:'Played 1x',tiPlayedMany:'Played {n}x',tiAlbumPlayed:'Album played {n}x',tiArtistAgo:'Heard artist {t} ago',year:'year',years:'years',month:'month',months:'months',week:'week',weeks:'weeks',
  verseOfDay:'Verse of the Day',pageAbbr:'p.',
  lfApiErr:'Last.fm · API error',lfApiHint:'Check Last.fm API settings',lfFailed:'Last.fm · request failed',unavailable:'Temporarily unavailable',sfSetup:'stats.fm · setup needed',sfCfg:'Configure user ID',sfAdd:'Add STATSFM_USER_ID in Vercel',sfApiErr:'stats.fm · API error',albumStats:'Album statistics',noRanking:'No album ranking available',
- loading:'Loading…',checkingSimkl:'Checking Simkl',watchingNow:'Watching now',lastWatched:'Last watched',nothingYet:'Nothing yet',noHistory:'No watch history',watchHint:'Watch something and it shows up here',apiError:'API error',simklDown:'Simkl unavailable',simklHint:'Check SIMKL_CLIENT_ID / SIMKL_TOKEN in Vercel',
+ loading:'Loading…',checkingSimkl:'Checking Simkl',watchingNow:'Watching now',pausedWord:'paused',lastWatched:'Last watched',nothingYet:'Nothing yet',noHistory:'No watch history',watchHint:'Watch something and it shows up here',apiError:'API error',simklDown:'Simkl unavailable',simklHint:'Check SIMKL_CLIENT_ID / SIMKL_TOKEN in Vercel',
  playingNow:'Playing now',lastPlayed:'Last played',idle:'Idle',session:'Session',total:'total',recently:'Recently played',noGames:'No recent games',syncHint:'Sync your Playnite library to show play history',
  ghLatest:'Latest activity',ghProfile:'GitHub profile',justNow:'just now',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS & LANGUAGES',expand:'expand',collapse:'collapse',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'public repositories analyzed',
  gameJump:"Jump over Taylor's trophy!",gameStart:'Tap, click or press Space to start',gameOver:'Taylor had the trophy.',gameBtn:'KANYE JUMP (TAP / SPACE)',hi:'HI',score:'SCORE',gameFire:'IMMA LET YOU FINISH…'},
@@ -502,7 +504,7 @@ pt:{liveNow:'AO VIVO',listening:'Ouvindo',watching:'Assistindo',playing:'Jogando
  tiLoved:'Favorita',tiLovedTitle:'Faixa favoritada no Last.fm',tiFirstPrefix:'1ª vez:',tiPlayedOnce:'Tocou 1 vez',tiPlayedMany:'Tocou {n}x',tiAlbumPlayed:'Tocou o álbum {n}x',tiArtistAgo:'Ouviu o artista há {t}',year:'ano',years:'anos',month:'mês',months:'meses',week:'semana',weeks:'semanas',
  verseOfDay:'Versículo do Dia',pageAbbr:'pág.',
  lfApiErr:'Last.fm · erro na API',lfApiHint:'Verifique a API do Last.fm',lfFailed:'Last.fm · falha na requisição',unavailable:'Indisponível no momento',sfSetup:'stats.fm · falta configurar',sfCfg:'Configure o ID do usuário',sfAdd:'Adicione STATSFM_USER_ID na Vercel',sfApiErr:'stats.fm · erro na API',albumStats:'Estatísticas do álbum',noRanking:'Sem ranking de álbuns',
- loading:'Carregando…',checkingSimkl:'Consultando o Simkl',watchingNow:'Assistindo agora',lastWatched:'Último assistido',nothingYet:'Nada ainda',noHistory:'Sem histórico',watchHint:'Assista algo e aparece aqui',apiError:'Erro na API',simklDown:'Simkl indisponível',simklHint:'Verifique SIMKL_CLIENT_ID / SIMKL_TOKEN na Vercel',
+ loading:'Carregando…',checkingSimkl:'Consultando o Simkl',watchingNow:'Assistindo agora',pausedWord:'pausado',lastWatched:'Último assistido',nothingYet:'Nada ainda',noHistory:'Sem histórico',watchHint:'Assista algo e aparece aqui',apiError:'Erro na API',simklDown:'Simkl indisponível',simklHint:'Verifique SIMKL_CLIENT_ID / SIMKL_TOKEN na Vercel',
  playingNow:'Jogando agora',lastPlayed:'Último jogado',idle:'Ocioso',session:'Sessão',total:'no total',recently:'Jogado recentemente',noGames:'Nenhum jogo recente',syncHint:'Sincronize sua biblioteca do Playnite para ver o histórico',
  ghLatest:'Atividade recente',ghProfile:'Perfil do GitHub',justNow:'agora mesmo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS & LINGUAGENS',expand:'ampliar',collapse:'recolher',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositórios públicos analisados',
  gameJump:'Pule o troféu da Taylor!',gameStart:'Toque, clique ou aperte Espaço para começar',gameOver:'A Taylor ficou com o troféu.',gameBtn:'KANYE PULA (TOQUE / ESPAÇO)',hi:'REC',score:'PONTOS',gameFire:'DEIXA EU TERMINAR…'},
@@ -514,7 +516,7 @@ es:{liveNow:'EN VIVO',listening:'Escuchando',watching:'Viendo',playing:'Jugando'
  tiLoved:'Favorita',tiLovedTitle:'Canción favorita en Last.fm',tiFirstPrefix:'1ª vez:',tiPlayedOnce:'Sonó 1 vez',tiPlayedMany:'Sonó {n}x',tiAlbumPlayed:'Sonó el álbum {n}x',tiArtistAgo:'Escuchó al artista hace {t}',year:'año',years:'años',month:'mes',months:'meses',week:'semana',weeks:'semanas',
  verseOfDay:'Versículo del Día',pageAbbr:'pág.',
  lfApiErr:'Last.fm · error de API',lfApiHint:'Revisa la API de Last.fm',lfFailed:'Last.fm · falló la solicitud',unavailable:'No disponible por ahora',sfSetup:'stats.fm · falta configurar',sfCfg:'Configura el ID de usuario',sfAdd:'Agrega STATSFM_USER_ID en Vercel',sfApiErr:'stats.fm · error de API',albumStats:'Estadísticas del álbum',noRanking:'Sin ranking de álbumes',
- loading:'Cargando…',checkingSimkl:'Consultando Simkl',watchingNow:'Viendo ahora',lastWatched:'Último visto',nothingYet:'Nada todavía',noHistory:'Sin historial',watchHint:'Mira algo y aparecerá aquí',apiError:'Error de API',simklDown:'Simkl no disponible',simklHint:'Revisa SIMKL_CLIENT_ID / SIMKL_TOKEN en Vercel',
+ loading:'Cargando…',checkingSimkl:'Consultando Simkl',watchingNow:'Viendo ahora',pausedWord:'en pausa',lastWatched:'Último visto',nothingYet:'Nada todavía',noHistory:'Sin historial',watchHint:'Mira algo y aparecerá aquí',apiError:'Error de API',simklDown:'Simkl no disponible',simklHint:'Revisa SIMKL_CLIENT_ID / SIMKL_TOKEN en Vercel',
  playingNow:'Jugando ahora',lastPlayed:'Último jugado',idle:'Inactivo',session:'Sesión',total:'en total',recently:'Jugado recientemente',noGames:'Sin juegos recientes',syncHint:'Sincroniza tu biblioteca de Playnite para ver el historial',
  ghLatest:'Actividad reciente',ghProfile:'Perfil de GitHub',justNow:'ahora mismo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS Y LENGUAJES',expand:'ampliar',collapse:'plegar',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositorios públicos analisados',
  gameJump:'¡Salta el trofeo de Taylor!',gameStart:'Toca, haz clic o pulsa Espacio para empezar',gameOver:'Taylor se quedó con el trofeo.',gameBtn:'KANYE SALTA (TOCA / ESPACIO)',hi:'REC',score:'PONTOS',gameFire:'DÉJAME TERMINAR…'}
@@ -941,8 +943,16 @@ function renderWatch(w){
   const ep=epLabel?epLabel+' · ':'';
   const progress=Number(w.progress),hasProgress=w.progress!=null&&Number.isFinite(progress)&&progress>=0;
   if(w.live){
-    pill.textContent=T('watchingNow');pill.className='pill live';
     const total=Number(w.durationSec)>0?Number(w.durationSec):(w.runtimeMin?w.runtimeMin*60:0),t0=Date.now();
+    if(w.paused){
+      const el=Number(w.elapsedSec)>0?Number(w.elapsedSec):(hasProgress&&total?progress/100*total:0);
+      pill.textContent=T('watchingNow')+' · '+T('pausedWord');pill.className='pill live paused';
+      bar.hidden=!total;
+      $('w-meta').textContent=ep+mmss(Math.min(el,total||el))+(total?' / '+mmss(total):'');
+      if(total)bar.firstElementChild.style.width=Math.min(100,el/total*100)+'%';
+      return;
+    }
+    pill.textContent=T('watchingNow');pill.className='pill live';
     const baseEl=Number(w.elapsedSec)>0?Number(w.elapsedSec):(w.watchedAt?Math.max(0,(t0-new Date(w.watchedAt))/1e3):(hasProgress&&total?progress/100*total:0));
     bar.hidden=!total;
     const up=()=>{

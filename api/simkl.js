@@ -337,6 +337,7 @@ async function saveLast(item) {
 
 const NUVIO_WEAK_GRACE_MS = 45e3;
 const NUVIO_LIVE_SLACK_SEC = 120;
+const NUVIO_PAUSE_HOLD_MS = Math.max(1, Number(process.env.NUVIO_PAUSE_HOLD_MIN) || 10) * 60e3;
 
 const S = { acts: null, actsAt: 0, sig: '', P: 0, addonLast: null, paused: null, lastDone: null, prevPaused: null, live: null, pushedLive: null, out: null, blockedUntil: 0 };
 const BACKOFF_MS = 20 * 60e3;
@@ -715,7 +716,7 @@ export default async function handler(req, res) {
     return { ...base, live: true, paused: false, watchedAt: new Date(cur.at).toISOString(), startedAt: cur.at,
       elapsedSec: Math.round(elapsed), progress: Math.min(99, Math.round(elapsed / base.durationSec * 100)), estimated: true };
   };
-  const addonStopTs = live => {
+  const addonSession = live => {
     const imdbOf = x => x?.imdbId || x?.media?.ids?.imdb || null;
     const same = x => {
       if (!x) return false;
@@ -723,8 +724,33 @@ export default async function handler(req, res) {
       if (!sameTitle) return false;
       return live.type === 'movie' || (Number(x.season) === Number(live.season) && Number(x.number) === Number(live.number));
     };
-    const hits = [S.paused, S.lastDone].filter(x => same(x) && ts(x.watchedAt) >= live.startedAt - 60e3);
-    return hits.length ? Math.max(...hits.map(x => ts(x.watchedAt))) : null;
+    const since = live.startedAt - 60e3;
+    if (same(S.lastDone) && ts(S.lastDone.watchedAt) >= since) return { state: 'ended', at: ts(S.lastDone.watchedAt) };
+    const p = S.paused;
+    if (same(p) && ts(p.watchedAt) >= since) {
+      if (Date.now() - ts(p.watchedAt) < NUVIO_PAUSE_HOLD_MS) return { state: 'paused', at: ts(p.watchedAt), progress: Number(p.progress) };
+      return { state: 'ended', at: ts(p.watchedAt) };
+    }
+    return null;
+  };
+  const resolveAddonLive = async () => {
+    if (!addonLive) return false;
+    const sess = addonSession(addonLive);
+    if (!sess) {
+      diag.picked = 'nuvio-addon-live';
+      await reply(addonLive, false);
+      return true;
+    }
+    if (sess.state === 'paused') {
+      const pr = Number.isFinite(sess.progress) ? sess.progress : addonLive.progress;
+      diag.picked = 'nuvio-addon-paused';
+      await reply({ ...addonLive, live: true, paused: true, progress: pr, elapsedSec: Math.round(addonLive.durationSec * pr / 100),
+        watchedAt: new Date(sess.at).toISOString(), estimated: false }, false);
+      return true;
+    }
+    diag.addonEndedBySimkl = new Date(sess.at).toISOString();
+    if (S.addonLast) S.addonLast = { ...S.addonLast, watchedAt: new Date(Math.min(sess.at, Date.now())).toISOString() };
+    return false;
   };
   const nuvioLast = async (cur, hist) => {
     const now = Date.now();
@@ -794,7 +820,7 @@ export default async function handler(req, res) {
 
   let addonLive = null;
   try {
-    const [rawLive, st, last, bl, nuvioCurRaw, nuvioHistRaw] = (await rcmd(['GET', 'hub:simkl:live'], ['GET', 'hub:simkl:state'], ['GET', 'hub:simkl:last'], ['GET', 'hub:simkl:blocked'], ['GET', 'hub:nuvio:cur'], ['GET', 'hub:nuvio:hist'])) || [];
+    const [rawLive, st, last, bl, nuvioCurRaw, nuvioHistRaw, actsRaw] = (await rcmd(['GET', 'hub:simkl:live'], ['GET', 'hub:simkl:state'], ['GET', 'hub:simkl:last'], ['GET', 'hub:simkl:blocked'], ['GET', 'hub:nuvio:cur'], ['GET', 'hub:nuvio:hist'], ['GET', 'hub:simkl:acts'])) || [];
     const redisLive = hydratePushedLive(jparse(rawLive) || S.pushedLive);
     if (redisLive) {
       diag.picked = 'redis-live-push';
@@ -837,14 +863,25 @@ export default async function handler(req, res) {
     }
     const savedLast = jparse(last);
     if (savedLast?.title && ts(savedLast.watchedAt) > ts(S.out?.watchedAt)) S.out = savedLast;
+    const sharedState = jparse(st);
+    if (sharedState && Number(sharedState.rebuiltAt || 0) > Number(S.rebuiltAt || 0)) {
+      Object.assign(S, { sig: sharedState.sig || '', paused: sharedState.paused || null, lastDone: sharedState.lastDone || null,
+        prevPaused: sharedState.prevPaused || null, live: sharedState.live || null, rebuiltAt: sharedState.rebuiltAt });
+    }
+    const sharedActs = jparse(actsRaw);
+    if (sharedActs?.data && Number(sharedActs.at || 0) > S.actsAt) { S.acts = sharedActs.data; S.actsAt = sharedActs.at; }
     if (Date.now() < S.blockedUntil) {
       diag.blockedForMin = Math.ceil((S.blockedUntil - Date.now()) / 60e3);
-      if (addonLive) { diag.picked = 'nuvio-addon-live'; return reply(addonLive, false); }
+      if (await resolveAddonLive()) return;
       const freshest = [S.out, S.addonLast].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
       return freshest ? reply({ ...freshest, stale: true }, false) : res.status(503).json({ error: 'Simkl daily API limit reached; retrying later.', ...(debug ? { _debug: diag } : {}) });
     }
 
-    if (!S.acts || Date.now() - S.actsAt > 10e3) { S.acts = await simklGet('/sync/activities'); S.actsAt = Date.now(); }
+    const actsTtl = addonLive || S.live ? 15e3 : 60e3;
+    if (!S.acts || Date.now() - S.actsAt > actsTtl) {
+      S.acts = await simklGet('/sync/activities'); S.actsAt = Date.now();
+      await rcmd(['SET', 'hub:simkl:acts', JSON.stringify({ at: S.actsAt, data: S.acts }), 'EX', 600]);
+    }
     const a = S.acts;
     const P = Math.max(ts(a?.tv_shows?.playback), ts(a?.anime?.playback), ts(a?.movies?.playback));
     const W = Math.max(ts(a?.tv_shows?.watching), ts(a?.anime?.watching));
@@ -853,15 +890,12 @@ export default async function handler(req, res) {
     diag.activities = { all: a?.all || null, playback: { movies: a?.movies?.playback || null, shows: a?.tv_shows?.playback || null, anime: a?.anime?.playback || null },
       watching: { shows: a?.tv_shows?.watching || null, anime: a?.anime?.watching || null },
       watched: { shows: a?.tv_shows?.watched || null, anime: a?.anime?.watched || null, movies: a?.movies?.watched || null }, now: new Date().toISOString() };
-    if (S.sig !== sig || (!S.paused && !S.lastDone) || req.query?.force === '1' || !S.rebuiltAt || Date.now() - S.rebuiltAt > 60e3) {
+    const rebuildEvery = (!S.paused && !S.lastDone) ? 60e3 : (addonLive || S.live ? 45e3 : 10 * 60e3);
+    if (S.sig !== sig || req.query?.force === '1' || !S.rebuiltAt || Date.now() - S.rebuiltAt > rebuildEvery) {
       await rebuild(P, W); S.sig = sig; S.rebuiltAt = Date.now();
       await rcmd(['SET', 'hub:simkl:state', JSON.stringify({ sig: S.sig, paused: S.paused, lastDone: S.lastDone, prevPaused: S.prevPaused, live: S.live, rebuiltAt: S.rebuiltAt }), 'EX', 30 * 86400]);
     }
-    if (addonLive) {
-      const stopAt = addonStopTs(addonLive);
-      if (!stopAt) { diag.picked = 'nuvio-addon-live'; diag.apiCalls = apiCalls; return reply(addonLive, false); }
-      diag.addonStoppedBySimkl = new Date(stopAt).toISOString();
-    }
+    if (await resolveAddonLive()) return;
     const out = await present();
     diag.apiCalls = apiCalls;
     return reply(out);
@@ -874,7 +908,7 @@ export default async function handler(req, res) {
     }
     diag.apiCalls = apiCalls;
     if (error?.status === 401) diag.tokenExpired = true;
-    if (addonLive) { diag.picked = 'nuvio-addon-live'; return reply(addonLive, false); }
+    if (await resolveAddonLive()) return;
     const pub = await getPublicRecent();
     const fallback = [pub, S.out, S.addonLast].filter(Boolean).sort((a, b) => ts(b.watchedAt) - ts(a.watchedAt))[0];
     if (fallback) {
