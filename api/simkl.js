@@ -778,6 +778,9 @@ export default async function handler(req, res) {
         return { state: 'resumed', at: live.startedAt, progress: Number(p.progress) };
       }
     }
+    if (same(S.prevPaused) && Date.now() - ts(S.prevPaused.watchedAt) < 12 * 3600e3) {
+      return { state: 'resumed', at: Math.max(live.startedAt, ts(S.prevPaused.watchedAt)), progress: Number(S.prevPaused.progress) };
+    }
     return null;
   };
   const resolveAddonLive = async () => {
