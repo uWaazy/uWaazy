@@ -2,6 +2,7 @@ import calendar
 import json
 import os
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -42,6 +43,16 @@ def load_local_env():
             m = re.search(r"^tmdb_api_key_2=(.+)$", raw, flags=re.M)
             if m:
                 vals["TMDB_API_KEY"] = m.group(1).strip()
+    except Exception:
+        pass
+    try:
+        if not vals.get("HUB_SECRET"):
+            playnite_cfg = os.path.join(os.environ.get("APPDATA", ""), "Playnite", "config.json")
+            if os.path.isfile(playnite_cfg):
+                raw = open(playnite_cfg, encoding="utf-8", errors="ignore").read()
+                m = re.search(r"(?:\$secret\s*=|Bearer)\s*['\"]?([A-Za-z0-9._-]{16,})", raw)
+                if m:
+                    vals["HUB_SECRET"] = m.group(1).strip()
     except Exception:
         pass
     return vals
@@ -250,19 +261,41 @@ def resolve_i18n(title, media_type, season, number, imdb_id=None, tmdb_id=None, 
                 "poster": fallback_poster,
             }
 
+    en_ep = (i18n.get("en") or {}).get("episodeTitle")
+    if en_ep and not is_generic_ep_name(en_ep):
+        for short_lang in ("pt", "es"):
+            if short_lang in i18n and is_generic_ep_name(i18n[short_lang].get("episodeTitle") or ""):
+                i18n[short_lang]["episodeTitle"] = en_ep
+
     out = {"i18n": i18n, "tmdbId": resolved_tmdb_id, "imdbId": resolved_imdb_id, "tmdbRuntimeMin": tmdb_runtime}
     I18N_CACHE[cache_key] = {"at": time.time(), "data": out}
     return out
 
 
+def is_nuvio_running():
+    try:
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        out = subprocess.check_output(
+            ["tasklist", "/FI", "IMAGENAME eq Nuvio.exe", "/NH"],
+            stderr=subprocess.DEVNULL,
+            creationflags=flags,
+            timeout=2,
+        )
+        return b"Nuvio.exe" in out
+    except Exception:
+        return True
+
+
 def detect_live_from_nuvio():
+    if not is_nuvio_running():
+        return None
     entries = read_nuvio_entries()
     if not entries:
         return None
     top = entries[0]
     now_ms = int(time.time() * 1000)
     upd_ms = int(top.get("lastUpdatedEpochMs") or 0)
-    if top.get("isCompleted") or (now_ms - upd_ms) > 105000:
+    if top.get("isCompleted") or (now_ms - upd_ms) > 35000:
         return None
     dur_ms = int(top.get("durationMs") or 0)
     pos_ms = int(top.get("lastPositionMs") or 0)

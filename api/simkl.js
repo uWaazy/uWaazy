@@ -127,6 +127,13 @@ async function resolveTmdbI18n({ title, type, imdbId, tmdbId, season, number, fa
       i18n[short] = { title: locTitle, episodeTitle: locEp, poster: locPoster };
     }));
 
+    const enEp = i18n.en?.episodeTitle;
+    if (enEp && !isGenericEpName(enEp)) {
+      for (const s of ['pt', 'es']) {
+        if (i18n[s] && isGenericEpName(i18n[s].episodeTitle)) i18n[s].episodeTitle = enEp;
+      }
+    }
+
     return { i18n, tmdbId: tid, tmdbRuntimeMin };
   });
 }
@@ -336,8 +343,8 @@ async function saveLast(item) {
 }
 
 const NUVIO_WEAK_GRACE_MS = 45e3;
-const NUVIO_LIVE_SLACK_SEC = 120;
-const NUVIO_PAUSE_HOLD_MS = Math.max(1, Number(process.env.NUVIO_PAUSE_HOLD_MIN) || 10) * 60e3;
+const NUVIO_UNCONFIRMED_MS = 180e3;
+const NUVIO_PAUSE_HOLD_MS = Math.max(1, Number(process.env.NUVIO_PAUSE_HOLD_MIN) || 3) * 60e3;
 
 const S = { acts: null, actsAt: 0, sig: '', P: 0, addonLast: null, paused: null, lastDone: null, prevPaused: null, live: null, pushedLive: null, out: null, blockedUntil: 0 };
 const BACKOFF_MS = 20 * 60e3;
@@ -439,7 +446,15 @@ export default async function handler(req, res) {
       S.pushedLive = null;
       S.live = null;
       S.sig = '';
-      await rcmd(['DEL', 'hub:simkl:live']);
+      const [curRaw, histRaw] = (await rcmd(['GET', 'hub:nuvio:cur'], ['GET', 'hub:nuvio:hist'])) || [];
+      const cur = jparse(curRaw);
+      const cmds = [['DEL', 'hub:simkl:live'], ['DEL', 'hub:nuvio:cur']];
+      if (cur?.imdbId) {
+        const hist = jparse(histRaw) || [];
+        const nextHist = [{ ...cur, endedAt: Date.now() }, ...hist.filter(h => h.key !== cur.key)].slice(0, 10);
+        cmds.push(['SET', 'hub:nuvio:hist', JSON.stringify(nextHist), 'EX', 30 * 86400]);
+      }
+      await rcmd(...cmds);
       return res.status(200).json({ ok: true, state: body?.state, title: itemToSave?.title || null, saved });
     }
     return res.status(400).json({ error: 'invalid state or item' });
@@ -700,21 +715,23 @@ export default async function handler(req, res) {
       title, type, imdbId: entry.imdbId, tmdbId: meta.tmdbId || null,
       season: entry.season ?? null, number: entry.number ?? null,
       episode: type === 'movie' ? null : sxe(entry.season, entry.number),
-      episodeTitle: null, runtimeMin, durationSec: runtimeMin * 60, poster: null,
+      episodeTitle: meta?.i18n?.en?.episodeTitle || meta?.i18n?.pt?.episodeTitle || null,
+      runtimeMin, durationSec: runtimeMin * 60,
+      poster: meta?.i18n?.en?.poster || meta?.i18n?.pt?.poster || null,
       i18n: meta.i18n, url: `https://simkl.com/${encodeURIComponent(uid)}/dashboard/`, source: 'nuvio-addon'
     };
   };
   const nuvioLive = async cur => {
-    if (!cur?.imdbId || !cur.at) return null;
+    if (!cur?.imdbId || !cur.at || cur.endedAt || cur.paused) return null;
+    if (cur.kind !== 'subtitles') return null;
     const now = Date.now();
     diag.nuvio = { key: cur.key, kind: cur.kind, ageSec: Math.round((now - cur.at) / 1000) };
-    if (cur.kind !== 'subtitles' && now - cur.at < NUVIO_WEAK_GRACE_MS) return null;
     const base = await nuvioItem(cur);
     if (!base) return null;
     const elapsed = (now - cur.at) / 1000;
-    if (elapsed > base.durationSec + NUVIO_LIVE_SLACK_SEC) return null;
+    if (elapsed > base.durationSec + 120) return null;
     return { ...base, live: true, paused: false, watchedAt: new Date(cur.at).toISOString(), startedAt: cur.at,
-      elapsedSec: Math.round(elapsed), progress: Math.min(99, Math.round(elapsed / base.durationSec * 100)), estimated: true };
+      seenAt: cur.seen || cur.at, elapsedSec: Math.round(elapsed), progress: Math.min(99, Math.round(elapsed / base.durationSec * 100)), estimated: true };
   };
   const addonSession = live => {
     const imdbOf = x => x?.imdbId || x?.media?.ids?.imdb || null;
@@ -737,6 +754,17 @@ export default async function handler(req, res) {
     if (!addonLive) return false;
     const sess = addonSession(addonLive);
     if (!sess) {
+      const unconfirmedAge = Date.now() - (addonLive.seenAt || addonLive.startedAt);
+      const a = S.acts;
+      const simklActivityAt = Math.max(
+        ts(a?.tv_shows?.watching), ts(a?.anime?.watching),
+        ts(a?.tv_shows?.playback), ts(a?.anime?.playback), ts(a?.movies?.playback)
+      );
+      const simklConfirmed = Boolean(S.live) || simklActivityAt >= addonLive.startedAt - 60e3;
+      if (unconfirmedAge > NUVIO_UNCONFIRMED_MS && (!simklConfirmed || Date.now() < S.blockedUntil || diag.error)) {
+        diag.addonEndedUnconfirmed = true;
+        return false;
+      }
       diag.picked = 'nuvio-addon-live';
       await reply(addonLive, false);
       return true;
@@ -754,13 +782,12 @@ export default async function handler(req, res) {
   };
   const nuvioLast = async (cur, hist) => {
     const now = Date.now();
-    const curUsable = cur?.imdbId && (cur.kind === 'subtitles' || now - cur.at >= NUVIO_WEAK_GRACE_MS);
+    const curUsable = cur?.imdbId && (cur.kind === 'subtitles' || cur.endedAt || now - cur.at >= NUVIO_WEAK_GRACE_MS);
     const top = curUsable ? cur : (Array.isArray(hist) ? hist[0] : null);
     if (!top?.imdbId) return null;
     const base = await nuvioItem(top);
     if (!base) return null;
-    const fullEnd = top.at + base.durationSec * 1000;
-    const endMs = Math.min(top.endedAt ? Math.min(top.endedAt, fullEnd) : fullEnd, now);
+    const endMs = Math.min(top.endedAt || top.seen || top.at, now);
     return { ...base, live: false, paused: false, watchedAt: new Date(endMs).toISOString() };
   };
   const present = async () => {

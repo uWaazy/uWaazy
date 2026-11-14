@@ -1049,7 +1049,7 @@ function renderGames(d){
 }
 async function loadGames(){
   try{if(CFG.demo){renderGames(DEMO_G);return}
-    const r=await fetch('/api/activity');if(!r.ok)throw 0;renderGames(await r.json())
+    const r=await fetch('/api/activity',{cache:'no-store'});if(!r.ok)throw 0;renderGames(await r.json())
   }catch(e){renderGames(null)}
 }
 
@@ -1279,7 +1279,7 @@ async function loadLive(){
 initTexts();
 loadMusic();loadWatch();loadGames();loadLive();loadGithub();loadGithubStacks();
 setInterval(refreshLastfmPlayback,10e3);setInterval(loadMusic,15*60e3);
-setInterval(()=>{if(!document.hidden)loadWatch()},12e3);setInterval(()=>{if(!document.hidden)loadGames()},3e4);setInterval(loadGithub,10*60e3);setInterval(()=>{if(!document.hidden)loadLive()},20e3);
+setInterval(()=>{if(!document.hidden)loadWatch()},12e3);setInterval(()=>{if(!document.hidden)loadGames()},12e3);setInterval(loadGithub,10*60e3);setInterval(()=>{if(!document.hidden)loadLive()},20e3);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){loadWatch();loadGames();loadLive();renderDailyVerse()}});
 
 const SFX=(function(){

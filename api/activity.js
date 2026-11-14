@@ -273,7 +273,7 @@ function mergeRecent(...lists) {
 export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
-      res.setHeader('Cache-Control', 's-maxage=10, stale-while-revalidate=30');
+      res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate=15');
       let now = null, pushed = [], redisError = null;
       if (URL_ && TOK) {
         try {
@@ -320,7 +320,10 @@ export default async function handler(req, res) {
     const isBadCover = id => !id || id === '3764200';
     const initialCover = isBadCover(clean(b.sourceId, 12)) ? null : cover(clean(b.source, 20), clean(b.sourceId, 12));
     const game = { name, cover: initialCover };
-    game.cover = await resolveCover(game, { force: true });
+    game.cover = await Promise.race([
+      resolveCover(game),
+      new Promise(r => setTimeout(() => r(knownCover(game.name) || initialCover), 2500))
+    ]) || initialCover;
 
     if (b.state === 'playing') {
       const startedAt = new Date(b.startedAt).toString() === 'Invalid Date' ? new Date().toISOString() : new Date(b.startedAt).toISOString();
