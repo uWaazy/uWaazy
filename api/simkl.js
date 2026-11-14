@@ -56,12 +56,16 @@ const isGenericEpName = name => !name || /^(?:Epis[oó]dio|Episode|Cap[ií]tulo|
 async function tmdbGet(path, params = {}) {
   if (!TMDB_KEY) return null;
   const url = new URL(`https://api.themoviedb.org/3${path}`);
-  url.searchParams.set('api_key', TMDB_KEY);
+  const isBearer = TMDB_KEY.length > 40;
+  if (!isBearer) url.searchParams.set('api_key', TMDB_KEY);
   for (const [k, v] of Object.entries(params)) {
     if (v != null && v !== '') url.searchParams.set(k, v);
   }
   try {
-    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(4500) });
+    const r = await fetch(url, {
+      headers: { 'User-Agent': UA, ...(isBearer ? { Authorization: `Bearer ${TMDB_KEY}` } : {}) },
+      signal: AbortSignal.timeout(4500)
+    });
     return r.ok ? await r.json() : null;
   } catch { return null; }
 }
@@ -80,62 +84,66 @@ async function resolveTmdbI18n({ title, type, imdbId, tmdbId, season, number, fa
   if (!title && !imdbId && !tmdbId) return null;
   const { season: sNum, number: eNum } = parseEpisodeCode(null, season, number);
   const key = `tmdb:${type}:${imdbId || ''}:${tmdbId || ''}:${title}:${sNum || ''}:${eNum || ''}`;
-  return cached(key, META_CACHE_MS, async () => {
-    let kind = type === 'movie' ? 'movie' : 'tv';
-    let tid = tmdbId ? Number(tmdbId) : null;
+  const hit = memo.get(key);
+  if (hit && Date.now() - hit.at < META_CACHE_MS) return hit.value;
+  let kind = type === 'movie' ? 'movie' : 'tv';
+  let tid = tmdbId ? Number(tmdbId) : null;
 
-    if (!tid && imdbId) {
-      const found = await tmdbGet(`/find/${encodeURIComponent(imdbId)}`, { external_source: 'imdb_id', language: 'en-US' });
-      const list = (kind === 'movie' ? found?.movie_results : found?.tv_results) || found?.tv_results || found?.movie_results || [];
-      if (list.length) {
-        tid = list[0].id;
-        if (!found?.movie_results?.length && found?.tv_results?.length) kind = 'tv';
+  if (!tid && imdbId) {
+    const found = await tmdbGet(`/find/${encodeURIComponent(imdbId)}`, { external_source: 'imdb_id', language: 'en-US' });
+    const list = (kind === 'movie' ? found?.movie_results : found?.tv_results) || found?.tv_results || found?.movie_results || [];
+    if (list.length) {
+      tid = list[0].id;
+      if (!found?.movie_results?.length && found?.tv_results?.length) kind = 'tv';
+    }
+  }
+  if (!tid && title) {
+    const srch = await tmdbGet(`/search/${kind}`, { query: title, language: 'en-US' });
+    if (srch?.results?.length) tid = srch.results[0].id;
+  }
+  if (!tid) return null;
+
+  const langs = [['pt', 'pt-BR'], ['en', 'en-US'], ['es', 'es-ES']];
+  const i18n = {};
+  let tmdbRuntimeMin = null;
+  let gotDet = false;
+
+  await Promise.all(langs.map(async ([short, full]) => {
+    let locTitle = title;
+    let locEp = fallbackEpTitle || null;
+    let locPoster = fallbackPoster || null;
+
+    const det = await tmdbGet(`/${kind}/${tid}`, { language: full });
+    if (det) {
+      gotDet = true;
+      locTitle = det.title || det.name || title;
+      if (det.poster_path) locPoster = `https://image.tmdb.org/t/p/w500${det.poster_path}`;
+      const rt = Number(det.runtime) || Number(det.episode_run_time?.[0]) || 0;
+      if (rt > 0 && !tmdbRuntimeMin) tmdbRuntimeMin = rt;
+    }
+    if (TOP_POSTERS_KEY && imdbId) {
+      locPoster = `https://api.ratingposterdb.com/${encodeURIComponent(TOP_POSTERS_KEY)}/imdb/poster-default/${encodeURIComponent(imdbId)}.jpg?lang=${short}`;
+    }
+    if (kind === 'tv' && eNum != null) {
+      const epDet = await tmdbGet(`/tv/${tid}/season/${sNum || 1}/episode/${eNum}`, { language: full });
+      if (epDet) {
+        if (epDet.name && (!isGenericEpName(epDet.name) || !fallbackEpTitle)) locEp = epDet.name;
+        if (Number(epDet.runtime) > 0) tmdbRuntimeMin = Number(epDet.runtime);
       }
     }
-    if (!tid && title) {
-      const srch = await tmdbGet(`/search/${kind}`, { query: title, language: 'en-US' });
-      if (srch?.results?.length) tid = srch.results[0].id;
+    i18n[short] = { title: locTitle, episodeTitle: locEp, poster: locPoster };
+  }));
+
+  const enEp = i18n.en?.episodeTitle;
+  if (enEp && !isGenericEpName(enEp)) {
+    for (const s of ['pt', 'es']) {
+      if (i18n[s] && isGenericEpName(i18n[s].episodeTitle)) i18n[s].episodeTitle = enEp;
     }
-    if (!tid) return null;
+  }
 
-    const langs = [['pt', 'pt-BR'], ['en', 'en-US'], ['es', 'es-ES']];
-    const i18n = {};
-    let tmdbRuntimeMin = null;
-
-    await Promise.all(langs.map(async ([short, full]) => {
-      let locTitle = title;
-      let locEp = fallbackEpTitle || null;
-      let locPoster = fallbackPoster || null;
-
-      const det = await tmdbGet(`/${kind}/${tid}`, { language: full });
-      if (det) {
-        locTitle = det.title || det.name || title;
-        if (det.poster_path) locPoster = `https://image.tmdb.org/t/p/w500${det.poster_path}`;
-        const rt = Number(det.runtime) || Number(det.episode_run_time?.[0]) || 0;
-        if (rt > 0 && !tmdbRuntimeMin) tmdbRuntimeMin = rt;
-      }
-      if (TOP_POSTERS_KEY && imdbId) {
-        locPoster = `https://api.ratingposterdb.com/${encodeURIComponent(TOP_POSTERS_KEY)}/imdb/poster-default/${encodeURIComponent(imdbId)}.jpg?lang=${short}`;
-      }
-      if (kind === 'tv' && eNum != null) {
-        const epDet = await tmdbGet(`/tv/${tid}/season/${sNum || 1}/episode/${eNum}`, { language: full });
-        if (epDet) {
-          if (epDet.name && (!isGenericEpName(epDet.name) || !fallbackEpTitle)) locEp = epDet.name;
-          if (Number(epDet.runtime) > 0) tmdbRuntimeMin = Number(epDet.runtime);
-        }
-      }
-      i18n[short] = { title: locTitle, episodeTitle: locEp, poster: locPoster };
-    }));
-
-    const enEp = i18n.en?.episodeTitle;
-    if (enEp && !isGenericEpName(enEp)) {
-      for (const s of ['pt', 'es']) {
-        if (i18n[s] && isGenericEpName(i18n[s].episodeTitle)) i18n[s].episodeTitle = enEp;
-      }
-    }
-
-    return { i18n, tmdbId: tid, tmdbRuntimeMin };
-  });
+  const out = { i18n, tmdbId: tid, tmdbRuntimeMin };
+  if (gotDet) memo.set(key, { at: Date.now(), value: out });
+  return out;
 }
 
 export function parseNowWatching(html) {
@@ -343,8 +351,7 @@ async function saveLast(item) {
 }
 
 const NUVIO_WEAK_GRACE_MS = 45e3;
-const NUVIO_UNCONFIRMED_MS = 180e3;
-const NUVIO_PAUSE_HOLD_MS = Math.max(1, Number(process.env.NUVIO_PAUSE_HOLD_MIN) || 3) * 60e3;
+const NUVIO_PAUSE_HOLD_MS = Math.max(1, Number(process.env.NUVIO_PAUSE_HOLD_MIN) || 2) * 60e3;
 
 const S = { acts: null, actsAt: 0, sig: '', P: 0, addonLast: null, paused: null, lastDone: null, prevPaused: null, live: null, pushedLive: null, out: null, blockedUntil: 0 };
 const BACKOFF_MS = 20 * 60e3;
@@ -754,17 +761,6 @@ export default async function handler(req, res) {
     if (!addonLive) return false;
     const sess = addonSession(addonLive);
     if (!sess) {
-      const unconfirmedAge = Date.now() - (addonLive.seenAt || addonLive.startedAt);
-      const a = S.acts;
-      const simklActivityAt = Math.max(
-        ts(a?.tv_shows?.watching), ts(a?.anime?.watching),
-        ts(a?.tv_shows?.playback), ts(a?.anime?.playback), ts(a?.movies?.playback)
-      );
-      const simklConfirmed = Boolean(S.live) || simklActivityAt >= addonLive.startedAt - 60e3;
-      if (unconfirmedAge > NUVIO_UNCONFIRMED_MS && (!simklConfirmed || Date.now() < S.blockedUntil || diag.error)) {
-        diag.addonEndedUnconfirmed = true;
-        return false;
-      }
       diag.picked = 'nuvio-addon-live';
       await reply(addonLive, false);
       return true;
@@ -904,7 +900,7 @@ export default async function handler(req, res) {
       return freshest ? reply({ ...freshest, stale: true }, false) : res.status(503).json({ error: 'Simkl daily API limit reached; retrying later.', ...(debug ? { _debug: diag } : {}) });
     }
 
-    const actsTtl = addonLive || S.live ? 15e3 : 60e3;
+    const actsTtl = addonLive || S.live ? 10e3 : 60e3;
     if (!S.acts || Date.now() - S.actsAt > actsTtl) {
       S.acts = await simklGet('/sync/activities'); S.actsAt = Date.now();
       await rcmd(['SET', 'hub:simkl:acts', JSON.stringify({ at: S.actsAt, data: S.acts }), 'EX', 600]);
@@ -917,7 +913,7 @@ export default async function handler(req, res) {
     diag.activities = { all: a?.all || null, playback: { movies: a?.movies?.playback || null, shows: a?.tv_shows?.playback || null, anime: a?.anime?.playback || null },
       watching: { shows: a?.tv_shows?.watching || null, anime: a?.anime?.watching || null },
       watched: { shows: a?.tv_shows?.watched || null, anime: a?.anime?.watched || null, movies: a?.movies?.watched || null }, now: new Date().toISOString() };
-    const rebuildEvery = (!S.paused && !S.lastDone) ? 60e3 : (addonLive || S.live ? 45e3 : 10 * 60e3);
+    const rebuildEvery = (!S.paused && !S.lastDone) ? 60e3 : (addonLive || S.live ? 20e3 : 10 * 60e3);
     if (S.sig !== sig || req.query?.force === '1' || !S.rebuiltAt || Date.now() - S.rebuiltAt > rebuildEvery) {
       await rebuild(P, W); S.sig = sig; S.rebuiltAt = Date.now();
       await rcmd(['SET', 'hub:simkl:state', JSON.stringify({ sig: S.sig, paused: S.paused, lastDone: S.lastDone, prevPaused: S.prevPaused, live: S.live, rebuiltAt: S.rebuiltAt }), 'EX', 30 * 86400]);
