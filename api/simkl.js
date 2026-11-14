@@ -8,7 +8,7 @@ const LIVE_CACHE_MS = 10e3;
 const META_CACHE_MS = 6 * 36e5;
 
 const envClean = v => String(v || '').trim().replace(/^["'`]+|["'`]+$/g, '').trim();
-const TMDB_KEY = envClean(process.env.TMDB_API_KEY || 'f852831cea564a90f0f0fda9f0ffc625');
+const TMDB_KEY = envClean(process.env.TMDB_API_KEY || '');
 const TOP_POSTERS_KEY = envClean(process.env.TOP_POSTERS_KEY || process.env.RPDB_API_KEY || '');
 
 let R_URL = envClean(process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL);
