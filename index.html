@@ -135,7 +135,9 @@ a.mini:hover{border-color:#3a4157}
 .profile-sub{display:block;font-size:11.5px;color:var(--cyan);margin-top:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-bgd{display:inline-flex;align-items:center;gap:7px;padding:10px 12px;border:1px dashed #2d3349;border-radius:12px;font-size:12.5px;color:var(--muted);white-space:nowrap;transition:border-color .2s,color .2s}
 .profile-bgd:hover{border-color:#ea377a;color:var(--text)}
+.profile-trakt:hover{border-color:#ed1c24;color:var(--text)}
 .bgd-mark{background:linear-gradient(135deg,#ea377a,#f43f5e);color:#fff}
+.trakt-mark{background:linear-gradient(135deg,#ed1c24,#ff4d4d);color:#fff}
 .profile{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border:1px dashed #2d3349;border-radius:12px;font-size:13px;color:var(--muted)}
 .profile img{width:26px;height:26px;border-radius:50%;background:#0d0f15;padding:3px}
 .profile b{color:var(--text)}.profile em{margin-left:auto;font-style:normal;color:var(--cyan)}
@@ -345,7 +347,7 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
     </div>
 
     <div class="sec">
-      <div class="lbl"><span data-i18n="watching">Watching</span><a class="mono simkl-heading" href="https://simkl.com/8094166/" target="_blank" rel="noopener">simkl ↗</a></div>
+      <div class="lbl"><span data-i18n="watching">Watching</span><span class="lbl-links"><a class="mono simkl-heading" href="https://simkl.com/8094166/" target="_blank" rel="noopener">simkl ↗</a><span class="lbl-sep">·</span><a class="mono" href="https://app.trakt.tv/profile/uwaazy" target="_blank" rel="noopener">trakt ↗</a></span></div>
       <a id="watch" class="card" href="https://simkl.com/8094166/dashboard/" target="_blank" rel="noopener">
         <div class="poster" id="w-poster">▶</div>
         <div class="info">
@@ -356,6 +358,14 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
         </div>
       </a>
       <div class="games" id="w-more" style="margin-top:8px"></div>
+      <div class="profile-row">
+        <a class="profile" href="https://simkl.com/8094166/" target="_blank" rel="noopener">
+          <img src="assets/simkl.svg" alt=""><span><b>uWaazy</b> <span data-i18n="onSimkl">on Simkl</span></span><em data-i18n="open">open ↗</em>
+        </a>
+        <a class="profile-bgd profile-trakt" href="https://app.trakt.tv/profile/uwaazy" target="_blank" rel="noopener">
+          <span class="link-mark trakt-mark">T</span><span>Trakt ↗</span>
+        </a>
+      </div>
     </div>
 
     <div class="sec">
@@ -470,6 +480,7 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
       <a href="https://stats.fm/uwaazy" target="_blank" rel="noopener"><span class="link-mark sf-mark">s</span> stats.fm</a>
       <a href="https://www.last.fm/user/WagnerSilva17" target="_blank" rel="noopener"><span class="link-mark lf-mark">♫</span> Last.fm</a>
       <a href="https://simkl.com/8094166/" target="_blank" rel="noopener"><img src="assets/simkl.svg" alt=""> Simkl</a>
+      <a href="https://app.trakt.tv/profile/uwaazy" target="_blank" rel="noopener"><span class="link-mark trakt-mark">T</span> Trakt</a>
       <a href="https://yourgamerprofile.com/uWaazy" target="_blank" rel="noopener"><span class="link-mark ygp-mark">Y</span> YGP</a>
       <a href="https://backloggd.com/u/uWaazy/" target="_blank" rel="noopener"><span class="link-mark bgd-mark">B</span> Backloggd</a>
       <a href="https://github.com/uWaazy" target="_blank" rel="noopener"><img src="https://cdn.simpleicons.org/github/e8ecf5" alt=""> GitHub</a>
@@ -500,7 +511,7 @@ const CFG={simklApi:'/api/simkl',localSimkl:'http://127.0.0.1:18095/simkl',demo:
 const $=id=>document.getElementById(id);
 
 const I18N={
-en:{liveNow:'LIVE',listening:'Listening',watching:'Watching',playing:'Playing',open:'open ↗',onYgp:'on Your Gamer Profile',onGh:'on GitHub',
+en:{liveNow:'LIVE',listening:'Listening',watching:'Watching',playing:'Playing',open:'open ↗',onSimkl:'on Simkl',onYgp:'on Your Gamer Profile',onGh:'on GitHub',
  nowListening:'Listening now',lastTrack:'Last track',noTrack:'No recent track',noScrobbles:'No recent scrobbles yet',lfLoading:'Loading Last.fm…',lfChecking:'Checking recent scrobbles',lfDown:'Last.fm temporarily unavailable',retrying:'Retrying automatically',
  lfTotalLabel:'Last.fm · total scrobbles',lfTrack7d:'Last.fm · top track / week',lfAlbum7d:'Last.fm · top album / week',lfArtist7d:'Last.fm · top artist / week',lfTop:'Last.fm · top album / 6 mos',lfAlbumAll:'Last.fm · top album / total',lfTrackAll:'Last.fm · top track / total',lfArtist1y:'Last.fm · top artist / 1 year',lfArtistAll:'Last.fm · top artist / total',lfLoved:'Last.fm · loved tracks',lovedWord:'loved tracks',inProfile:'scrobbles in profile',lastWeek:'last 7 days',lastYear:'last 12 months',allTime:'all time',
  sfTotalLabel:'stats.fm · total streams',sfHours24h:'stats.fm · today (24h)',sfHours7d:'stats.fm · last 7 days',sfTrack24h:'stats.fm · top track / 24h',sfTrack7d:'stats.fm · top track / week',sfAlbum7d:'stats.fm · top album / week',sfArtist7d:'stats.fm · top artist / week',sfTop:'stats.fm · top album / 4 wks',sfTrack4w:'stats.fm · top track / 4 wks',sfArtist4w:'stats.fm · top artist / 4 wks',sfTrack6m:'stats.fm · top track / 6 mos',sfAlbum6m:'stats.fm · top album / 6 mos',sfArtist6m:'stats.fm · top artist / 6 mos',sfTrackAll:'stats.fm · top track / total',sfAlbumAll:'stats.fm · top album / total',sfArtistAll:'stats.fm · top artist / total',sfGenre4w:'stats.fm · top genre / 4 wks',sfPlaylist4w:'stats.fm · top playlist / 4 wks',
@@ -512,7 +523,7 @@ en:{liveNow:'LIVE',listening:'Listening',watching:'Watching',playing:'Playing',o
  playingNow:'Playing now',lastPlayed:'Last played',idle:'Idle',session:'Session',total:'total',recently:'Recently played',noGames:'No recent games',syncHint:'Sync your Playnite library to show play history',ygpGames:'{n} games',ygpTop:'Most played: {name}',
  ghLatest:'Latest activity',ghProfile:'GitHub profile',justNow:'just now',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS & LANGUAGES',expand:'expand',collapse:'collapse',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'public repositories analyzed',
  gameJump:"Jump over Taylor's trophy!",gameStart:'Tap, click or press Space to start',gameOver:'Taylor had the trophy.',gameBtn:'KANYE JUMP (TAP / SPACE)',hi:'HI',score:'SCORE',gameFire:'IMMA LET YOU FINISH…'},
-pt:{liveNow:'AO VIVO',listening:'Ouvindo',watching:'Assistindo',playing:'Jogando',open:'abrir ↗',onYgp:'no Your Gamer Profile',onGh:'no GitHub',
+pt:{liveNow:'AO VIVO',listening:'Ouvindo',watching:'Assistindo',playing:'Jogando',open:'abrir ↗',onSimkl:'no Simkl',onYgp:'no Your Gamer Profile',onGh:'no GitHub',
  nowListening:'Ouvindo agora',lastTrack:'Última música',noTrack:'Nenhuma música recente',noScrobbles:'Ainda sem scrobbles recentes',lfLoading:'Carregando Last.fm…',lfChecking:'Verificando scrobbles recentes',lfDown:'Last.fm indisponível no momento',retrying:'Tentando de novo automaticamente',
  lfTotalLabel:'Last.fm · total de scrobbles',lfTrack7d:'Last.fm · top música / semana',lfAlbum7d:'Last.fm · top álbum / semana',lfArtist7d:'Last.fm · top artista / semana',lfTop:'Last.fm · top álbum / 6 meses',lfAlbumAll:'Last.fm · top álbum / total',lfTrackAll:'Last.fm · top música / total',lfArtist1y:'Last.fm · top artista / 1 ano',lfArtistAll:'Last.fm · top artista / total',lfLoved:'Last.fm · faixas favoritas',lovedWord:'favoritas',inProfile:'scrobbles no perfil',lastWeek:'últimos 7 dias',lastYear:'último 1 ano',allTime:'todo o perfil',
  sfTotalLabel:'stats.fm · total de streams',sfHours24h:'stats.fm · hoje (24h)',sfHours7d:'stats.fm · últimos 7 dias',sfTrack24h:'stats.fm · top música / 24h',sfTrack7d:'stats.fm · top música / semana',sfAlbum7d:'stats.fm · top álbum / semana',sfArtist7d:'stats.fm · top artista / semana',sfTop:'stats.fm · top álbum / 4 sem.',sfTrack4w:'stats.fm · top música / 4 sem.',sfArtist4w:'stats.fm · top artista / 4 sem.',sfTrack6m:'stats.fm · top música / 6 meses',sfAlbum6m:'stats.fm · top álbum / 6 meses',sfArtist6m:'stats.fm · top artista / 6 meses',sfTrackAll:'stats.fm · top música / total',sfAlbumAll:'stats.fm · top álbum / total',sfArtistAll:'stats.fm · top artista / total',sfGenre4w:'stats.fm · top gênero / 4 sem.',sfPlaylist4w:'stats.fm · top playlist / 4 sem.',
@@ -524,7 +535,7 @@ pt:{liveNow:'AO VIVO',listening:'Ouvindo',watching:'Assistindo',playing:'Jogando
  playingNow:'Jogando agora',lastPlayed:'Último jogado',idle:'Ocioso',session:'Sessão',total:'no total',recently:'Jogado recentemente',noGames:'Nenhum jogo recente',syncHint:'Sincronize sua biblioteca do Playnite para ver o histórico',ygpGames:'{n} jogos',ygpTop:'Mais jogado: {name}',
  ghLatest:'Atividade recente',ghProfile:'Perfil do GitHub',justNow:'agora mesmo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS & LINGUAGENS',expand:'ampliar',collapse:'recolher',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositórios públicos analisados',
  gameJump:'Pule o troféu da Taylor!',gameStart:'Toque, clique ou aperte Espaço para começar',gameOver:'A Taylor ficou com o troféu.',gameBtn:'KANYE PULA (TOQUE / ESPAÇO)',hi:'REC',score:'PONTOS',gameFire:'DEIXA EU TERMINAR…'},
-es:{liveNow:'EN VIVO',listening:'Escuchando',watching:'Viendo',playing:'Jugando',open:'abrir ↗',onYgp:'en Your Gamer Profile',onGh:'en GitHub',
+es:{liveNow:'EN VIVO',listening:'Escuchando',watching:'Viendo',playing:'Jugando',open:'abrir ↗',onSimkl:'en Simkl',onYgp:'en Your Gamer Profile',onGh:'en GitHub',
  nowListening:'Escuchando ahora',lastTrack:'Última canción',noTrack:'Sin canciones recientes',noScrobbles:'Aún sin scrobbles recientes',lfLoading:'Cargando Last.fm…',lfChecking:'Revisando scrobbles recientes',lfDown:'Last.fm no disponible por ahora',retrying:'Reintentando automáticamente',
  lfTotalLabel:'Last.fm · total de scrobbles',lfTrack7d:'Last.fm · top canción / semana',lfAlbum7d:'Last.fm · top álbum / semana',lfArtist7d:'Last.fm · top artista / semana',lfTop:'Last.fm · top álbum / 6 meses',lfAlbumAll:'Last.fm · top álbum / total',lfTrackAll:'Last.fm · top canción / total',lfArtist1y:'Last.fm · top artista / 1 año',lfArtistAll:'Last.fm · top artista / total',lfLoved:'Last.fm · canciones favoritas',lovedWord:'favoritas',inProfile:'scrobbles en el perfil',lastWeek:'últimos 7 días',lastYear:'último año',allTime:'histórico',
  sfTotalLabel:'stats.fm · total de streams',sfHours24h:'stats.fm · hoy (24h)',sfHours7d:'stats.fm · últimos 7 días',sfTrack24h:'stats.fm · top canción / 24h',sfTrack7d:'stats.fm · top canción / semana',sfAlbum7d:'stats.fm · top álbum / semana',sfArtist7d:'stats.fm · top artista / semana',sfTop:'stats.fm · top álbum / 4 sem.',sfTrack4w:'stats.fm · top canción / 4 sem.',sfArtist4w:'stats.fm · top artista / 4 sem.',sfTrack6m:'stats.fm · top canción / 6 meses',sfAlbum6m:'stats.fm · top álbum / 6 meses',sfArtist6m:'stats.fm · top artista / 6 meses',sfTrackAll:'stats.fm · top canción / total',sfAlbumAll:'stats.fm · top álbum / total',sfArtistAll:'stats.fm · top artista / total',sfGenre4w:'stats.fm · top género / 4 sem.',sfPlaylist4w:'stats.fm · top playlist / 4 sem.',
