@@ -76,26 +76,40 @@ async function searchStatsfm(query) {
   });
 }
 
+async function resolveItunesCover(title, artist = '') {
+  if (!title) return null;
+  return withCache(`itunes:${norm(artist)}|${norm(title)}`, 6 * 3600e3, async () => {
+    const q = [artist, title].filter(Boolean).join(' ');
+    const d = await safeJson(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=5`, 4000);
+    const list = Array.isArray(d?.results) ? d.results : [];
+    const nArtist = norm(artist);
+    const nTitle = norm(title);
+    const hit = list.find(x => (!nArtist || norm(x.artistName).includes(nArtist) || nArtist.includes(norm(x.artistName))) && (norm(x.trackName).includes(nTitle) || nTitle.includes(norm(x.trackName))))
+      || list.find(x => !nArtist || norm(x.artistName).includes(nArtist) || nArtist.includes(norm(x.artistName)))
+      || list[0];
+    return hit?.artworkUrl100 ? hit.artworkUrl100.replace(/\/\d+x\d+bb\./i, '/300x300bb.') : null;
+  });
+}
+
 async function resolveMediaImage(kind, title, artist = '') {
   if (!title) return null;
   const items = await searchStatsfm(title);
-  if (!items) return null;
   const nTitle = norm(title);
   const nArtist = norm(artist);
   if (kind === 'artist') {
-    const list = items.artists || [];
+    const list = items?.artists || [];
     const hit = list.find(a => norm(a.name) === nTitle) || list[0];
     return hit?.image || null;
   }
   if (kind === 'track') {
-    const list = items.tracks || [];
+    const list = items?.tracks || [];
     const hit = list.find(t => (!nArtist || t.artists?.some(a => norm(a.name).includes(nArtist) || nArtist.includes(norm(a.name))))) || list[0];
-    return hit?.albums?.[0]?.image || hit?.artists?.[0]?.image || null;
+    return hit?.albums?.[0]?.image || hit?.artists?.[0]?.image || await resolveItunesCover(title, artist);
   }
   if (kind === 'album') {
-    const list = items.albums || [];
+    const list = items?.albums || [];
     const hit = list.find(a => (!nArtist || a.artists?.some(ar => norm(ar.name).includes(nArtist)))) || list[0];
-    return hit?.image || null;
+    return hit?.image || await resolveItunesCover(title, artist);
   }
   return null;
 }
@@ -154,7 +168,7 @@ async function getTrackContext(track, isLive = false) {
     const loved = lfTrack?.userloved === '1' || lfTrack?.userloved === 1 || lfTrack?.userloved === true;
     const lfTrackPlays = Number(lfTrack?.userplaycount || 0) || 0;
     const albumName = track.album || lfTrack?.album?.title || sfTrack?.albums?.[0]?.name || '';
-    const coverImg = track.image || lastImage(lfTrack?.album?.image) || sfTrack?.albums?.[0]?.image || null;
+    const coverImg = track.image || lastImage(lfTrack?.album?.image) || sfTrack?.albums?.[0]?.image || await resolveItunesCover(track.title, track.artist) || null;
 
     const sfTrackId = sfTrack?.id || null;
     const sfAlbumId = sfTrack?.albums?.[0]?.id || null;

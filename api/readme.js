@@ -74,7 +74,7 @@ async function toDataUri(url) {
   if (url.startsWith('assets/logo')) return getLogoDataUri();
   const fullUrl = (url.startsWith('http') ? url : `${PROD_ORIGIN}/${url.replace(/^\/+/, '')}`)
     .replace(/\/\d+x\d+bb\.(jpg|png|webp)/i, '/100x100bb.$1')
-    .replace(/\/i\/u\/300x300\//i, '/i/u/120s/')
+    .replace(/\/i\/u\/300x300\//i, '/i/u/174s/')
     .replace(/(i\.scdn\.co\/image\/)ab67616d0000b273/i, '$1ab67616d00004851')
     .replace(/(i\.scdn\.co\/image\/)ab6761610000e5eb/i, '$1ab6761610000f178')
     .replace(/(image\.tmdb\.org\/t\/p\/)w(?:342|500|780|original)/i, '$1w92');
@@ -110,7 +110,7 @@ async function runInternal(handlerFn, query = {}) {
 
 const endpointMemo = new Map();
 async function fetchEndpoint(handlerFn, fallbackPath, query = {}) {
-  const internal = await Promise.race([runInternal(handlerFn, query), sleep(1400).then(() => ({ ok: false, data: null, timedOut: true }))]);
+  const internal = await Promise.race([runInternal(handlerFn, query), sleep(2200).then(() => ({ ok: false, data: null, timedOut: true }))]);
   if (internal.ok && internal.data && !internal.data.error && !internal.data.lastfm?.error) {
     endpointMemo.set(fallbackPath, { at: Date.now(), data: internal.data });
     return internal.data;
@@ -118,14 +118,17 @@ async function fetchEndpoint(handlerFn, fallbackPath, query = {}) {
   const memo = endpointMemo.get(fallbackPath);
   if (memo && Date.now() - memo.at < 10 * 60e3) return memo.data;
   try {
-    const r = await fetch(`${PROD_ORIGIN}${fallbackPath}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(2000) });
+    const r = await fetch(`${PROD_ORIGIN}${fallbackPath}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(2200) });
     if (r.ok) {
       const prod = await r.json();
-      if (fallbackPath === '/api/music' && internal.data?.statsfm?.slides?.length) {
-        prod.statsfm = internal.data.statsfm;
-        if (prod.lastfm && !prod.lastfm.trackInfo) {
+      if (fallbackPath === '/api/music') {
+        if (internal.data?.statsfm?.slides?.length) prod.statsfm = internal.data.statsfm;
+        if (prod.lastfm) {
           const tr = prod.lastfm.current || prod.lastfm.lastTrack;
-          if (tr) prod.lastfm.trackInfo = await getTrackContext(tr, prod.lastfm.live);
+          if (tr && (!prod.lastfm.trackInfo || !tr.image)) {
+            prod.lastfm.trackInfo = prod.lastfm.trackInfo || await getTrackContext(tr, prod.lastfm.live);
+            if (!tr.image && prod.lastfm.trackInfo?.image) tr.image = prod.lastfm.trackInfo.image;
+          }
         }
       }
       return prod;
@@ -358,6 +361,7 @@ async function renderSvg(lang) {
     image: ''
   };
   const ti = lf.trackInfo || null;
+  const trackImgUrl = track?.image || ti?.image || '';
   const wLoc = (simkl?.i18n && simkl.i18n[lang]) || {};
   const wPosterUrl = wLoc.poster || simkl?.poster;
 
@@ -369,7 +373,7 @@ async function renderSvg(lang) {
   const secondGame = gamesList[0] || { name: 'Assetto Corsa Competizione', endedAt: null };
 
   const urlsToFetch = [
-    track?.image,
+    trackImgUrl,
     wPosterUrl,
     mainGame?.cover,
     secondGame?.cover,
@@ -387,7 +391,7 @@ async function renderSvg(lang) {
   ]);
 
   const logoUri = getLogoDataUri();
-  const trackUri = uriMap.get(track?.image) || '';
+  const trackUri = uriMap.get(trackImgUrl) || '';
   const simklUri = uriMap.get(wPosterUrl) || '';
   const gameUri = uriMap.get(mainGame?.cover) || '';
   const game2Uri = uriMap.get(secondGame?.cover) || '';
@@ -701,7 +705,7 @@ export default async function handler(req, res) {
   }
 
   const job = triggerBackgroundRender();
-  const svg = await Promise.race([job.catch(() => null), sleep(2200).then(() => null)]);
+  const svg = await Promise.race([job.catch(() => null), sleep(3600).then(() => null)]);
   if (svg) return send(svg, CACHE_POLICY);
 
   if (memHit?.svg) return send(memHit.svg, CACHE_POLICY);

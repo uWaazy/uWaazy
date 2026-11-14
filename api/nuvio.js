@@ -11,7 +11,7 @@ const R_TOK = envClean(process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_RE
 const CUR_KEY = 'hub:nuvio:cur';
 const HIST_KEY = 'hub:nuvio:hist';
 const SAME_ITEM_MS = 3 * 3600e3;
-const MIN_WATCH_MS = 3 * 60e3;
+const MIN_WATCH_MS = 15e3;
 const HIST_MAX = 10;
 
 let waitUntilFn = null;
@@ -68,15 +68,15 @@ async function record(info, kind) {
   const [curRaw, histRaw] = (await rcmd(['GET', CUR_KEY], ['GET', HIST_KEY])) || [];
   const cur = jparse(curRaw);
   let hist = jparse(histRaw) || [];
-  if (cur && cur.key === info.key && now - cur.at < SAME_ITEM_MS) {
+  if (cur && cur.key === info.key && !cur.endedAt && !cur.paused && now - cur.at < SAME_ITEM_MS) {
     await rcmd(['SET', CUR_KEY, JSON.stringify({ ...cur, seen: now, kind: cur.kind === 'subtitles' ? 'subtitles' : kind }), 'EX', 86400]);
     return;
   }
   if (cur && now - cur.at >= MIN_WATCH_MS) {
-    hist = [{ ...cur, endedAt: now }, ...hist.filter(h => h.key !== cur.key)].slice(0, HIST_MAX);
+    hist = [{ ...cur, endedAt: cur.endedAt || now }, ...hist.filter(h => h.key !== cur.key)].slice(0, HIST_MAX);
   }
   await rcmd(
-    ['SET', CUR_KEY, JSON.stringify({ ...info, kind, at: now, seen: now }), 'EX', 86400],
+    ['SET', CUR_KEY, JSON.stringify({ ...info, kind, at: now, seen: now, endedAt: null, paused: false }), 'EX', 86400],
     ['SET', HIST_KEY, JSON.stringify(hist), 'EX', 30 * 86400]
   );
 }
