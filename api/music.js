@@ -437,10 +437,12 @@ async function getTopPlaylist4w(uEnc, profileUrl) {
     const s1 = await safeJson(`${STATSFM_BASE}/users/${uEnc}/streams?after=${fourWeeksAgo}&limit=1000`, 6000);
     const items = Array.isArray(s1?.items) ? s1.items : [];
     const counts = new Map();
+    const durations = new Map();
     for (const st of items) {
       const ctx = st?.contextId;
       if (typeof ctx === 'string' && ctx.startsWith('spotify:playlist:')) {
         counts.set(ctx, (counts.get(ctx) || 0) + 1);
+        durations.set(ctx, (durations.get(ctx) || 0) + (Number(st?.playedMs) || 0));
       }
     }
     if (!counts.size) return null;
@@ -452,6 +454,7 @@ async function getTopPlaylist4w(uEnc, profileUrl) {
       title: oembed?.title || 'Spotify Playlist',
       artist: 'Spotify',
       streams: plays,
+      durationMs: durations.get(topCtx) || null,
       image: oembed?.thumbnail_url || null,
       url: `${profileUrl}/streams`,
       spotifyUrl: `https://open.spotify.com/playlist/${encodeURIComponent(plId)}`
@@ -509,16 +512,24 @@ async function getStatsfm() {
 
   return withCache(`sf-agg:${STAT_USER}`, 180e3, async () => {
     const uEnc = encodeURIComponent(STAT_USER);
+    const dayAgo = Date.now() - 86400 * 1000;
     const sevenDaysAgo = Date.now() - 7 * 86400 * 1000;
     const [
       userRes,
       statsRes,
+      stats24hRes,
+      stats7dRes,
+      track24hRes,
       tracks7dRes,
       albums7dRes,
       artists7dRes,
       albumsRes,
       tracksRes,
       artistsRes,
+      tracks6mRes,
+      albums6mRes,
+      artists6mRes,
+      tracksAllRes,
       albumsAllRes,
       artistsAllRes,
       genresRes,
@@ -526,12 +537,19 @@ async function getStatsfm() {
     ] = await Promise.all([
       safeJson(`${STATSFM_BASE}/users/${uEnc}`),
       safeJson(`${STATSFM_BASE}/users/${uEnc}/streams/stats`),
+      safeJson(`${STATSFM_BASE}/users/${uEnc}/streams/stats?after=${dayAgo}`),
+      safeJson(`${STATSFM_BASE}/users/${uEnc}/streams/stats?after=${sevenDaysAgo}`),
+      safeJson(`${STATSFM_BASE}/users/${uEnc}/top/tracks?after=${dayAgo}&limit=1`),
       safeJson(`${STATSFM_BASE}/users/${uEnc}/top/tracks?after=${sevenDaysAgo}&limit=1`),
       safeJson(`${STATSFM_BASE}/users/${uEnc}/top/albums?after=${sevenDaysAgo}&limit=1`),
       safeJson(`${STATSFM_BASE}/users/${uEnc}/top/artists?after=${sevenDaysAgo}&limit=1`),
       safeJson(`${STATSFM_BASE}/users/${uEnc}/top/albums?range=weeks&limit=1`),
       safeJson(`${STATSFM_BASE}/users/${uEnc}/top/tracks?range=weeks&limit=1`),
       safeJson(`${STATSFM_BASE}/users/${uEnc}/top/artists?range=weeks&limit=1`),
+      safeJson(`${STATSFM_BASE}/users/${uEnc}/top/tracks?range=months&limit=1`),
+      safeJson(`${STATSFM_BASE}/users/${uEnc}/top/albums?range=months&limit=1`),
+      safeJson(`${STATSFM_BASE}/users/${uEnc}/top/artists?range=months&limit=1`),
+      safeJson(`${STATSFM_BASE}/users/${uEnc}/top/tracks?range=lifetime&limit=1`),
       safeJson(`${STATSFM_BASE}/users/${uEnc}/top/albums?range=lifetime&limit=1`),
       safeJson(`${STATSFM_BASE}/users/${uEnc}/top/artists?range=lifetime&limit=1`),
       safeJson(`${STATSFM_BASE}/users/${uEnc}/top/genres?range=weeks&limit=1`),
@@ -544,13 +562,20 @@ async function getStatsfm() {
     const statsObj = statsRes?.items || statsRes?.item || {};
     const totalStreams = Number(statsObj.count || 0) || null;
     const totalDurationMs = Number(statsObj.durationMs || 0) || null;
+    const st24Obj = stats24hRes?.items || stats24hRes?.item || {};
+    const st7dObj = stats7dRes?.items || stats7dRes?.item || {};
 
+    const track24hData = mapSfTrack(track24hRes?.items?.[0], profileImage);
     const track7dData = mapSfTrack(tracks7dRes?.items?.[0], profileImage);
     const album7dData = mapSfAlbum(albums7dRes?.items?.[0], profileImage);
     const artist7dData = mapSfArtist(artists7dRes?.items?.[0], profileImage);
     const albumData = mapSfAlbum(albumsRes?.items?.[0], profileImage);
     const trackData = mapSfTrack(tracksRes?.items?.[0], profileImage);
     const artistData = mapSfArtist(artistsRes?.items?.[0], profileImage);
+    const track6mData = mapSfTrack(tracks6mRes?.items?.[0], profileImage);
+    const album6mData = mapSfAlbum(albums6mRes?.items?.[0], profileImage);
+    const artist6mData = mapSfArtist(artists6mRes?.items?.[0], profileImage);
+    const trackAllData = mapSfTrack(tracksAllRes?.items?.[0], profileImage);
     const albumAllData = mapSfAlbum(albumsAllRes?.items?.[0], profileImage);
     const artistAllData = mapSfArtist(artistsAllRes?.items?.[0], profileImage);
 
@@ -576,6 +601,35 @@ async function getStatsfm() {
         durationMs: totalDurationMs,
         image: profileImage,
         url: profileUrl
+      });
+    }
+    if (Number(st24Obj.count) > 0) {
+      slides.push({
+        kind: 'hours24h',
+        title: displayName,
+        artist: `@${userItem.customId || STAT_USER}`,
+        streams: Number(st24Obj.count),
+        durationMs: Number(st24Obj.durationMs || 0) || null,
+        image: profileImage,
+        url: `${profileUrl}/streams`
+      });
+    }
+    if (Number(st7dObj.count) > 0) {
+      slides.push({
+        kind: 'hours7d',
+        title: displayName,
+        artist: `@${userItem.customId || STAT_USER}`,
+        streams: Number(st7dObj.count),
+        durationMs: Number(st7dObj.durationMs || 0) || null,
+        image: profileImage,
+        url: `${profileUrl}/streams`
+      });
+    }
+    if (track24hData) {
+      slides.push({
+        kind: 'track24h',
+        ...track24hData,
+        url: `${profileUrl}/tracks`
       });
     }
     if (track7dData) {
@@ -618,6 +672,34 @@ async function getStatsfm() {
         kind: 'artist',
         ...artistData,
         url: `${profileUrl}/artists?range=weeks`
+      });
+    }
+    if (track6mData) {
+      slides.push({
+        kind: 'track6m',
+        ...track6mData,
+        url: `${profileUrl}/tracks?range=months`
+      });
+    }
+    if (album6mData) {
+      slides.push({
+        kind: 'album6m',
+        ...album6mData,
+        url: `${profileUrl}/albums?range=months`
+      });
+    }
+    if (artist6mData) {
+      slides.push({
+        kind: 'artist6m',
+        ...artist6mData,
+        url: `${profileUrl}/artists?range=months`
+      });
+    }
+    if (trackAllData) {
+      slides.push({
+        kind: 'trackAll',
+        ...trackAllData,
+        url: `${profileUrl}/tracks?range=lifetime`
       });
     }
     if (albumAllData) {

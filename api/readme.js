@@ -275,6 +275,24 @@ function buildSlideLabels(slide, isLf, lang = 'pt') {
           title: `${nf(slide.streams, lang)} streams`,
           meta: [hrs ? `${hrs} ${pt ? 'ouvidas' : 'listened'}` : '', slide.artist].filter(Boolean).join(' · ')
         };
+      case 'hours24h':
+        return {
+          label: pt ? 'stats.fm · hoje (24h)' : 'stats.fm · today (24h)',
+          title: hrs ? `${hrs} ${pt ? 'ouvidas' : 'listened'}` : `${nf(slide.streams, lang)} streams`,
+          meta: [slide.streams ? `${nf(slide.streams, lang)} streams` : '', slide.artist].filter(Boolean).join(' · ')
+        };
+      case 'hours7d':
+        return {
+          label: pt ? 'stats.fm · últimos 7 dias' : 'stats.fm · last 7 days',
+          title: hrs ? `${hrs} ${pt ? 'ouvidas' : 'listened'}` : `${nf(slide.streams, lang)} streams`,
+          meta: [slide.streams ? `${nf(slide.streams, lang)} streams` : '', slide.artist].filter(Boolean).join(' · ')
+        };
+      case 'track24h':
+        return {
+          label: pt ? 'stats.fm · top música / 24h' : 'stats.fm · top track / 24h',
+          title: slide.title || '—',
+          meta: [slide.artist, slide.streams ? `${nf(slide.streams, lang)} plays` : '', hrs].filter(Boolean).join(' · ')
+        };
       case 'track7d':
         return {
           label: pt ? 'stats.fm · top música / semana' : 'stats.fm · top track / week',
@@ -311,6 +329,30 @@ function buildSlideLabels(slide, isLf, lang = 'pt') {
           title: slide.title || '—',
           meta: [slide.streams ? `${nf(slide.streams, lang)} plays` : '', slide.artist].filter(Boolean).join(' · ')
         };
+      case 'track6m':
+        return {
+          label: pt ? 'stats.fm · top música / 6m' : 'stats.fm · top track / 6m',
+          title: slide.title || '—',
+          meta: [slide.artist, slide.streams ? `${nf(slide.streams, lang)} plays` : '', hrs].filter(Boolean).join(' · ')
+        };
+      case 'album6m':
+        return {
+          label: pt ? 'stats.fm · top álbum / 6m' : 'stats.fm · top album / 6m',
+          title: slide.title || '—',
+          meta: [slide.artist, slide.streams ? `${nf(slide.streams, lang)} plays` : '', hrs].filter(Boolean).join(' · ')
+        };
+      case 'artist6m':
+        return {
+          label: pt ? 'stats.fm · top artista / 6m' : 'stats.fm · top artist / 6m',
+          title: slide.title || '—',
+          meta: [slide.streams ? `${nf(slide.streams, lang)} plays` : '', hrs, slide.artist].filter(Boolean).join(' · ')
+        };
+      case 'trackAll':
+        return {
+          label: pt ? 'stats.fm · top música / total' : 'stats.fm · top track / total',
+          title: slide.title || '—',
+          meta: [slide.artist, slide.streams ? `${nf(slide.streams, lang)} plays` : '', hrs].filter(Boolean).join(' · ')
+        };
       case 'albumAll':
         return {
           label: pt ? 'stats.fm · top álbum / total' : 'stats.fm · top album / total',
@@ -333,7 +375,7 @@ function buildSlideLabels(slide, isLf, lang = 'pt') {
         return {
           label: pt ? 'stats.fm · top playlist / 4 sem.' : 'stats.fm · top playlist / 4w',
           title: slide.title || '—',
-          meta: `${nf(slide.streams, lang)} plays · Spotify`
+          meta: [slide.streams ? `${nf(slide.streams, lang)} plays` : '', hrs, 'Spotify'].filter(Boolean).join(' · ')
         };
       default:
         return { label: 'stats.fm', title: slide.title || '—', meta: '' };
