@@ -124,9 +124,18 @@ a{color:inherit;text-decoration:none}
 .bar{height:4px;border-radius:4px;background:#232839;margin-top:10px;overflow:hidden}
 .bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--purple),var(--cyan));transition:width 1s linear}
 .games{display:flex;flex-direction:column;gap:8px}
-.mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:#0f1117;border:1px solid var(--line);font-size:13px}
+.mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:#0f1117;border:1px solid var(--line);font-size:13px;transition:border-color .2s}
+a.mini:hover{border-color:#3a4157}
 .mini .poster{width:32px;height:46px;border-radius:6px;font-size:12px;background-size:cover;background-position:top center}
 .mini span{color:var(--muted);margin-left:auto;font-size:12px;white-space:nowrap}
+.lbl-links{display:inline-flex;align-items:center;gap:7px;text-transform:none;letter-spacing:0}
+.lbl-sep{color:#3c435c;font-size:11px}
+.profile-row{display:flex;align-items:stretch;gap:8px;margin-top:10px}
+.profile-row .profile{flex:1;min-width:0;margin-top:0}
+.profile-sub{display:block;font-size:11.5px;color:var(--cyan);margin-top:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-bgd{display:inline-flex;align-items:center;gap:7px;padding:10px 12px;border:1px dashed #2d3349;border-radius:12px;font-size:12.5px;color:var(--muted);white-space:nowrap;transition:border-color .2s,color .2s}
+.profile-bgd:hover{border-color:#ea377a;color:var(--text)}
+.bgd-mark{background:linear-gradient(135deg,#ea377a,#f43f5e);color:#fff}
 .profile{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border:1px dashed #2d3349;border-radius:12px;font-size:13px;color:var(--muted)}
 .profile img{width:26px;height:26px;border-radius:50%;background:#0d0f15;padding:3px}
 .profile b{color:var(--text)}.profile em{margin-left:auto;font-style:normal;color:var(--cyan)}
@@ -346,10 +355,11 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
           <div class="bar" id="w-bar" hidden><span></span></div>
         </div>
       </a>
+      <div class="games" id="w-more" style="margin-top:8px"></div>
     </div>
 
     <div class="sec">
-      <div class="lbl"><span data-i18n="playing">Playing</span><a class="mono" href="https://yourgamerprofile.com/uWaazy" target="_blank" rel="noopener">yourgamerprofile ↗</a></div>
+      <div class="lbl"><span data-i18n="playing">Playing</span><span class="lbl-links"><a class="mono" href="https://yourgamerprofile.com/uWaazy" target="_blank" rel="noopener">yourgamerprofile ↗</a><span class="lbl-sep">·</span><a class="mono" href="https://backloggd.com/u/uWaazy/" target="_blank" rel="noopener">backloggd ↗</a></span></div>
       <div class="card" id="game-card">
         <div class="poster sq" id="g-poster">🎮</div>
         <div class="info">
@@ -359,9 +369,14 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
         </div>
       </div>
       <div class="games" id="g-more" style="margin-top:8px"></div>
-      <a class="profile" href="https://yourgamerprofile.com/uWaazy" target="_blank" rel="noopener">
-        <img src="assets/logo.png" alt=""><span><b>uWaazy</b> <span data-i18n="onYgp">on Your Gamer Profile</span></span><em data-i18n="open">open ↗</em>
-      </a>
+      <div class="profile-row">
+        <a class="profile" href="https://yourgamerprofile.com/uWaazy" target="_blank" rel="noopener">
+          <img src="assets/logo.png" alt=""><span><b>uWaazy</b> <span data-i18n="onYgp">on Your Gamer Profile</span><span class="profile-sub" id="g-stats" hidden></span></span><em data-i18n="open">open ↗</em>
+        </a>
+        <a class="profile-bgd" href="https://backloggd.com/u/uWaazy/" target="_blank" rel="noopener">
+          <span class="link-mark bgd-mark">B</span><span>Backloggd ↗</span>
+        </a>
+      </div>
 
       <div class="gh-wrap">
         <div class="gh" id="gh">
@@ -456,6 +471,7 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-acti
       <a href="https://www.last.fm/user/WagnerSilva17" target="_blank" rel="noopener"><span class="link-mark lf-mark">♫</span> Last.fm</a>
       <a href="https://simkl.com/8094166/" target="_blank" rel="noopener"><img src="assets/simkl.svg" alt=""> Simkl</a>
       <a href="https://yourgamerprofile.com/uWaazy" target="_blank" rel="noopener"><span class="link-mark ygp-mark">Y</span> YGP</a>
+      <a href="https://backloggd.com/u/uWaazy/" target="_blank" rel="noopener"><span class="link-mark bgd-mark">B</span> Backloggd</a>
       <a href="https://github.com/uWaazy" target="_blank" rel="noopener"><img src="https://cdn.simpleicons.org/github/e8ecf5" alt=""> GitHub</a>
     </div>
   </section>
@@ -493,7 +509,7 @@ en:{liveNow:'LIVE',listening:'Listening',watching:'Watching',playing:'Playing',o
  verseOfDay:'Verse of the Day',pageAbbr:'p.',
  lfApiErr:'Last.fm · API error',lfApiHint:'Check Last.fm API settings',lfFailed:'Last.fm · request failed',unavailable:'Temporarily unavailable',sfSetup:'stats.fm · setup needed',sfCfg:'Configure user ID',sfAdd:'Add STATSFM_USER_ID in Vercel',sfApiErr:'stats.fm · API error',albumStats:'Album statistics',noRanking:'No album ranking available',
  loading:'Loading…',checkingSimkl:'Checking Simkl',watchingNow:'Watching now',pausedWord:'paused',lastWatched:'Last watched',nothingYet:'Nothing yet',noHistory:'No watch history',watchHint:'Watch something and it shows up here',apiError:'API error',simklDown:'Simkl unavailable',simklHint:'Check SIMKL_CLIENT_ID / SIMKL_TOKEN in Vercel',
- playingNow:'Playing now',lastPlayed:'Last played',idle:'Idle',session:'Session',total:'total',recently:'Recently played',noGames:'No recent games',syncHint:'Sync your Playnite library to show play history',
+ playingNow:'Playing now',lastPlayed:'Last played',idle:'Idle',session:'Session',total:'total',recently:'Recently played',noGames:'No recent games',syncHint:'Sync your Playnite library to show play history',ygpGames:'{n} games',ygpTop:'Most played: {name}',
  ghLatest:'Latest activity',ghProfile:'GitHub profile',justNow:'just now',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS & LANGUAGES',expand:'expand',collapse:'collapse',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'public repositories analyzed',
  gameJump:"Jump over Taylor's trophy!",gameStart:'Tap, click or press Space to start',gameOver:'Taylor had the trophy.',gameBtn:'KANYE JUMP (TAP / SPACE)',hi:'HI',score:'SCORE',gameFire:'IMMA LET YOU FINISH…'},
 pt:{liveNow:'AO VIVO',listening:'Ouvindo',watching:'Assistindo',playing:'Jogando',open:'abrir ↗',onYgp:'no Your Gamer Profile',onGh:'no GitHub',
@@ -505,7 +521,7 @@ pt:{liveNow:'AO VIVO',listening:'Ouvindo',watching:'Assistindo',playing:'Jogando
  verseOfDay:'Versículo do Dia',pageAbbr:'pág.',
  lfApiErr:'Last.fm · erro na API',lfApiHint:'Verifique a API do Last.fm',lfFailed:'Last.fm · falha na requisição',unavailable:'Indisponível no momento',sfSetup:'stats.fm · falta configurar',sfCfg:'Configure o ID do usuário',sfAdd:'Adicione STATSFM_USER_ID na Vercel',sfApiErr:'stats.fm · erro na API',albumStats:'Estatísticas do álbum',noRanking:'Sem ranking de álbuns',
  loading:'Carregando…',checkingSimkl:'Consultando o Simkl',watchingNow:'Assistindo agora',pausedWord:'pausado',lastWatched:'Último assistido',nothingYet:'Nada ainda',noHistory:'Sem histórico',watchHint:'Assista algo e aparece aqui',apiError:'Erro na API',simklDown:'Simkl indisponível',simklHint:'Verifique SIMKL_CLIENT_ID / SIMKL_TOKEN na Vercel',
- playingNow:'Jogando agora',lastPlayed:'Último jogado',idle:'Ocioso',session:'Sessão',total:'no total',recently:'Jogado recentemente',noGames:'Nenhum jogo recente',syncHint:'Sincronize sua biblioteca do Playnite para ver o histórico',
+ playingNow:'Jogando agora',lastPlayed:'Último jogado',idle:'Ocioso',session:'Sessão',total:'no total',recently:'Jogado recentemente',noGames:'Nenhum jogo recente',syncHint:'Sincronize sua biblioteca do Playnite para ver o histórico',ygpGames:'{n} jogos',ygpTop:'Mais jogado: {name}',
  ghLatest:'Atividade recente',ghProfile:'Perfil do GitHub',justNow:'agora mesmo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS & LINGUAGENS',expand:'ampliar',collapse:'recolher',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositórios públicos analisados',
  gameJump:'Pule o troféu da Taylor!',gameStart:'Toque, clique ou aperte Espaço para começar',gameOver:'A Taylor ficou com o troféu.',gameBtn:'KANYE PULA (TOQUE / ESPAÇO)',hi:'REC',score:'PONTOS',gameFire:'DEIXA EU TERMINAR…'},
 es:{liveNow:'EN VIVO',listening:'Escuchando',watching:'Viendo',playing:'Jugando',open:'abrir ↗',onYgp:'en Your Gamer Profile',onGh:'en GitHub',
@@ -517,7 +533,7 @@ es:{liveNow:'EN VIVO',listening:'Escuchando',watching:'Viendo',playing:'Jugando'
  verseOfDay:'Versículo del Día',pageAbbr:'pág.',
  lfApiErr:'Last.fm · error de API',lfApiHint:'Revisa la API de Last.fm',lfFailed:'Last.fm · falló la solicitud',unavailable:'No disponible por ahora',sfSetup:'stats.fm · falta configurar',sfCfg:'Configura el ID de usuario',sfAdd:'Agrega STATSFM_USER_ID en Vercel',sfApiErr:'stats.fm · error de API',albumStats:'Estadísticas del álbum',noRanking:'Sin ranking de álbumes',
  loading:'Cargando…',checkingSimkl:'Consultando Simkl',watchingNow:'Viendo ahora',pausedWord:'en pausa',lastWatched:'Último visto',nothingYet:'Nada todavía',noHistory:'Sin historial',watchHint:'Mira algo y aparecerá aquí',apiError:'Error de API',simklDown:'Simkl no disponible',simklHint:'Revisa SIMKL_CLIENT_ID / SIMKL_TOKEN en Vercel',
- playingNow:'Jugando ahora',lastPlayed:'Último jugado',idle:'Inactivo',session:'Sesión',total:'en total',recently:'Jugado recientemente',noGames:'Sin juegos recientes',syncHint:'Sincroniza tu biblioteca de Playnite para ver el historial',
+ playingNow:'Jugando ahora',lastPlayed:'Último jugado',idle:'Inactivo',session:'Sesión',total:'en total',recently:'Jugado recientemente',noGames:'Sin juegos recientes',syncHint:'Sincroniza tu biblioteca de Playnite para ver el historial',ygpGames:'{n} juegos',ygpTop:'Más jugado: {name}',
  ghLatest:'Actividad reciente',ghProfile:'Perfil de GitHub',justNow:'ahora mismo',stacksBtn:'Stacks',devStack:'DEVELOPER STACK',stacksTitle:'STACKS Y LENGUAJES',expand:'ampliar',collapse:'plegar',stLanguages:'LANGUAGES',stPlatforms:'PLATFORMS',stData:'DATA',stTools:'TOOLS',publicRepos:'repositorios públicos analisados',
  gameJump:'¡Salta el trofeo de Taylor!',gameStart:'Toca, haz clic o pulsa Espacio para empezar',gameOver:'Taylor se quedó con el trofeo.',gameBtn:'KANYE SALTA (TOCA / ESPACIO)',hi:'REC',score:'PONTOS',gameFire:'DÉJAME TERMINAR…'}
 };
@@ -944,7 +960,8 @@ async function refreshLastfmPlayback(){
 const DEMO_W={live:false,title:'Dragon Ball Super: Beerus',type:'anime',episode:'S01E04',episodeTitle:'The God of Saiyans',watchedAt:new Date(Date.now()-4*36e5).toISOString(),runtimeMin:25,poster:null,url:'https://simkl.com/8094166/dashboard/'};
 let tick;
 function renderWatch(w){
-  clearInterval(tick);const pill=$('w-pill'),bar=$('w-bar');
+  clearInterval(tick);const pill=$('w-pill'),bar=$('w-bar'),wMore=$('w-more');
+  if(wMore)wMore.innerHTML='';
   const poster=$('w-poster');poster.style.backgroundImage='';poster.textContent='▶';
   if(!w||!w.title){pill.textContent=T('nothingYet');pill.className='pill';bar.hidden=true;$('w-title').textContent=T('noHistory');$('w-meta').textContent=T('watchHint');return}
   const loc=(w.i18n&&w.i18n[LANG])||{};
@@ -953,6 +970,16 @@ function renderWatch(w){
   const wPoster=loc.poster||w.poster;
   $('w-title').textContent=wTitle;bg(poster,wPoster);if(w.url)$('watch').href=w.url;
   if(wPoster){BG.movie=wPoster;pickBg()}
+  if(wMore&&Array.isArray(w.recent)&&w.recent.length){
+    w.recent.slice(0,2).forEach(x=>{
+      const xl=(x.i18n&&x.i18n[LANG])||{};
+      const el=document.createElement('a');el.className='mini';el.href=x.url||'https://simkl.com/8094166/';el.target='_blank';el.rel='noopener';
+      const p=document.createElement('div');p.className='poster';p.textContent='▶';bg(p,xl.poster||x.poster);
+      const n=document.createElement('div');n.textContent=xl.title||x.title;
+      const t=document.createElement('span');t.textContent=[x.episode,x.watchedAt?ago(x.watchedAt):''].filter(Boolean).join(' · ');
+      el.append(p,n,t);wMore.append(el);
+    });
+  }
   const epLabel=[w.episode,wEpTitle].filter(Boolean).join(' · ');
   const ep=epLabel?epLabel+' · ':'';
   const progress=Number(w.progress),hasProgress=w.progress!=null&&Number.isFinite(progress)&&progress>=0;
@@ -1043,9 +1070,27 @@ const resolveGameCover=g=>{
 };
 
 const DEMO_G={now:null,recent:[{name:'Assetto Corsa Competizione',cover:null,endedAt:new Date(Date.now()-21*6e4).toISOString(),hours:393.6},{name:'Elden Ring',endedAt:new Date(Date.now()-30*36e5).toISOString(),hours:212},{name:'Hollow Knight',endedAt:new Date(Date.now()-96*36e5).toISOString(),hours:64.2}]};
-let gtick;
+let gtick,gStatTimer,gStatSlides=[],gStatIdx=0;
+function renderGameStats(stats){
+  clearInterval(gStatTimer);
+  const el=$('g-stats');if(!el)return;
+  gStatSlides=[];gStatIdx=0;
+  if(stats){
+    const summary=[stats.gamesCount?T('ygpGames').replace('{n}',nf(stats.gamesCount)):null,stats.totalHours?`${nf(stats.totalHours)} h ${T('total')}`:null].filter(Boolean).join(' · ');
+    if(summary)gStatSlides.push(summary);
+    if(stats.topGame?.name&&stats.topGame?.hours)gStatSlides.push(`${T('ygpTop').replace('{name}',stats.topGame.name)} (${nf(stats.topGame.hours)} h)`);
+  }
+  if(!gStatSlides.length){el.hidden=true;el.textContent='';return}
+  const show=()=>{el.textContent=gStatSlides[gStatIdx%gStatSlides.length];el.hidden=false};
+  show();
+  if(gStatSlides.length>1){
+    el.onclick=e=>{e.preventDefault();e.stopPropagation();gStatIdx=(gStatIdx+1)%gStatSlides.length;show()};
+    gStatTimer=setInterval(()=>{gStatIdx=(gStatIdx+1)%gStatSlides.length;show()},6000);
+  }
+}
 function renderGames(d){
   clearInterval(gtick);const pill=$('g-pill'),more=$('g-more');more.innerHTML='';
+  renderGameStats(d?.stats);
   const list=((d&&d.recent)||[]).slice();let main=null;
   if(d&&d.now){main=d.now;pill.textContent=T('playingNow');pill.className='pill live';
     const up=()=>{$('g-meta').textContent=T('session')+' '+mmss((Date.now()-new Date(main.startedAt))/1e3)};up();gtick=setInterval(up,1000)}

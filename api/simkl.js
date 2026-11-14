@@ -616,6 +616,26 @@ export default async function handler(req, res) {
 
   const reply = async (obj, remember = true) => {
     const localized = await enrichLocalization(obj);
+    if (localized && localized.title && Array.isArray(S.recentDone) && S.recentDone.length) {
+      const mainUrl = localized.url || '';
+      const mainKey = `${(localized.title || '').toLowerCase()}|${localized.episode || ''}`;
+      const picked = S.recentDone.filter(r => {
+        if (!r || !r.title) return false;
+        if (mainUrl && r.url && r.url === mainUrl) return false;
+        return `${r.title.toLowerCase()}|${r.episode || ''}` !== mainKey;
+      }).slice(0, 2);
+      if (picked.length) {
+        const locRecent = await Promise.all(picked.map(x => enrichLocalization(x).catch(() => x)));
+        localized.recent = locRecent.map(x => ({
+          title: x.title,
+          episode: x.episode || null,
+          poster: x.poster || null,
+          url: x.url || null,
+          watchedAt: x.watchedAt || null,
+          ...(x.i18n ? { i18n: x.i18n } : {})
+        }));
+      }
+    }
     if (remember && localized && localized.title) {
       S.out = localized;
       await rcmd(['SET', 'hub:simkl:last', JSON.stringify(localized), 'EX', 7 * 86400]);
@@ -691,7 +711,10 @@ export default async function handler(req, res) {
     let rows = rowsFromItems(await simklGet('/sync/all-items', { ...base, date_from: since }), true);
     if (!rows.length) rows = rowsFromItems(await simklGet('/sync/all-items', base), true);
     diag.historyCandidates = rows.length;
-    return rows[0] ? rowToItem(rows[0], false) : null;
+    return {
+      last: rows[0] ? rowToItem(rows[0], false) : null,
+      recent: rows.slice(0, 4).map(r => rowToItem(r, false))
+    };
   };
   const getDelta = async (fromMs, preferNext = false) => {
     const since = new Date(fromMs).toISOString().replace(/\.\d+Z$/, 'Z');
@@ -848,7 +871,21 @@ export default async function handler(req, res) {
   const rebuild = async (P, W) => {
     const oldPaused = S.paused;
     const paused = await getPaused();
-    let lastDone = await getLastDone();
+    const doneRes = await getLastDone();
+    let lastDone = doneRes?.last || null;
+    S.recentDone = (doneRes?.recent || []).map(x => ({
+      title: x.title,
+      type: x.type,
+      season: x.season ?? null,
+      number: x.number ?? null,
+      episode: x.episode || null,
+      sid: x.sid || null,
+      imdbId: x.imdbId || null,
+      tmdbId: x.tmdbId || null,
+      poster: posterOf(x.media),
+      url: simklUrl(x.type, x.sid),
+      watchedAt: x.watchedAt || null
+    }));
     const pub = await getPublicRecent();
     if (pub && (!lastDone || ts(pub.watchedAt) >= ts(lastDone.watchedAt) || !lastDone.title)) {
       lastDone = pub;
@@ -913,7 +950,7 @@ export default async function handler(req, res) {
       S.loaded = true;
       const state = jparse(st);
       if (state) Object.assign(S, { sig: state.sig || '', paused: state.paused || null, lastDone: state.lastDone || null, prevPaused: state.prevPaused || null,
-        live: state.live || null });
+        recentDone: state.recentDone || [], live: state.live || null });
       if (!S.out || req.query?.force === '1') S.out = jparse(last);
       if (req.query?.force === '1') S.sig = '';
       S.blockedUntil = Math.max(S.blockedUntil, Number(bl) || 0);
@@ -924,7 +961,7 @@ export default async function handler(req, res) {
     const sharedState = jparse(st);
     if (sharedState && Number(sharedState.rebuiltAt || 0) > Number(S.rebuiltAt || 0)) {
       Object.assign(S, { sig: sharedState.sig || '', paused: sharedState.paused || null, lastDone: sharedState.lastDone || null,
-        prevPaused: sharedState.prevPaused || null, live: sharedState.live || null, rebuiltAt: sharedState.rebuiltAt });
+        prevPaused: sharedState.prevPaused || null, recentDone: sharedState.recentDone || [], live: sharedState.live || null, rebuiltAt: sharedState.rebuiltAt });
     }
     const sharedActs = jparse(actsRaw);
     if (sharedActs?.data && Number(sharedActs.at || 0) > S.actsAt) { S.acts = sharedActs.data; S.actsAt = sharedActs.at; }
@@ -951,7 +988,7 @@ export default async function handler(req, res) {
     const rebuildEvery = (!S.paused && !S.lastDone) ? 60e3 : (addonLive || S.live ? 20e3 : 10 * 60e3);
     if (S.sig !== sig || req.query?.force === '1' || !S.rebuiltAt || Date.now() - S.rebuiltAt > rebuildEvery) {
       await rebuild(P, W); S.sig = sig; S.rebuiltAt = Date.now();
-      await rcmd(['SET', 'hub:simkl:state', JSON.stringify({ sig: S.sig, paused: S.paused, lastDone: S.lastDone, prevPaused: S.prevPaused, live: S.live, rebuiltAt: S.rebuiltAt }), 'EX', 30 * 86400]);
+      await rcmd(['SET', 'hub:simkl:state', JSON.stringify({ sig: S.sig, paused: S.paused, lastDone: S.lastDone, prevPaused: S.prevPaused, recentDone: S.recentDone || [], live: S.live, rebuiltAt: S.rebuiltAt }), 'EX', 30 * 86400]);
     }
     if (await resolveAddonLive()) return;
     const out = await present();

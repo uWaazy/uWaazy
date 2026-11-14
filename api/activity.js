@@ -304,8 +304,22 @@ export default async function handler(req, res) {
           await redis([['SET', 'hub:recent', JSON.stringify(healed)]]);
         } catch {}
       }
+      const allGames = [];
+      for (const g of [...ygp.value, ...pushed]) {
+        if (!g?.name) continue;
+        const idx = allGames.findIndex(x => sameName(x, g));
+        if (idx < 0) allGames.push({ name: g.name, hours: g.hours || null, cover: g.cover || null });
+        else if ((g.hours || 0) > (allGames[idx].hours || 0)) allGames[idx].hours = g.hours;
+      }
+      const totalHours = allGames.reduce((acc, g) => acc + (Number(g.hours) > 0 ? Number(g.hours) : 0), 0);
+      const topGame = allGames.filter(g => Number(g.hours) > 0).sort((a, b) => b.hours - a.hours)[0] || null;
+      const stats = allGames.length ? {
+        gamesCount: allGames.length,
+        totalHours: totalHours > 0 ? Math.round(totalHours * 10) / 10 : null,
+        topGame: topGame ? { name: topGame.name, hours: topGame.hours } : null
+      } : null;
       const source = now ? 'playnite-live' : pushed.length ? 'playnite-history' : ygp.value.length ? 'ygp' : 'empty';
-      return res.json({ now, recent, source, ...(req.query?.debug === '1' ? { _debug: { ygp: ygp.diag, redis: !(URL_ && TOK) ? 'not configured' : redisError ? 'ERROR: ' + redisError : 'ok', pushed: pushed.length } } : {}) });
+      return res.json({ now, recent, stats, source, ...(req.query?.debug === '1' ? { _debug: { ygp: ygp.diag, redis: !(URL_ && TOK) ? 'not configured' : redisError ? 'ERROR: ' + redisError : 'ok', pushed: pushed.length } } : {}) });
     }
     if (!URL_ || !TOK) return res.status(500).json({ error: 'Redis (Upstash) env vars missing for Playnite live updates' });
     if (req.method !== 'POST') return res.status(405).end();

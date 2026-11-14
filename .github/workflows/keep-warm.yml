@@ -12,7 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Warm the README card
+      - name: Warm the README card and Hub APIs
         run: |
-          curl -fsS -m 25 -o /dev/null -w "pt %{http_code} %{time_total}s\n" "https://uwaazy.vercel.app/api/readme?lang=pt" || true
-          curl -fsS -m 25 -o /dev/null -w "en %{http_code} %{time_total}s\n" "https://uwaazy.vercel.app/api/readme?lang=en" || true
+          curl -fsS -m 25 -o /dev/null -w "readme-pt %{http_code} %{time_total}s\n" "https://uwaazy.vercel.app/api/readme?lang=pt" || true
+          curl -fsS -m 25 -o /dev/null -w "readme-en %{http_code} %{time_total}s\n" "https://uwaazy.vercel.app/api/readme?lang=en" || true
+          curl -fsS -m 25 -o /dev/null -w "music %{http_code} %{time_total}s\n" "https://uwaazy.vercel.app/api/music" || true
+          curl -fsS -m 25 -o /dev/null -w "simkl %{http_code} %{time_total}s\n" "https://uwaazy.vercel.app/api/simkl" || true
