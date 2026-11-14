@@ -129,10 +129,23 @@ add('Upstash Redis', async () => {
 
 add('YourGamerProfile', async () => {
   if (!env.YGP_GAMES_URL) return skip('nao configurado (usa a pagina publica)');
-  const r = await http(env.YGP_GAMES_URL, { headers: { 'User-Agent': 'Mozilla/5.0', ...(env.YGP_COOKIE ? { Cookie: env.YGP_COOKIE } : {}) } });
+  const r = await http(env.YGP_GAMES_URL, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+      'Accept': 'application/json,text/html;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Referer': 'https://yourgamerprofile.com/',
+      ...(env.YGP_COOKIE ? { Cookie: env.YGP_COOKIE } : {})
+    }
+  });
   if (net(r)) return net(r);
   if (r.status === 200) return ok('acessivel');
-  if (r.status === 401 || r.status === 403) return bad('acesso negado (cookie/URL expirados?)');
+  if (r.status === 401 || r.status === 403) {
+    const prod = await http(`${HUB}/api/activity?debug=1`);
+    const hit = prod.json?._debug?.ygp?.tried?.find(t => t.status === 200 && t.games > 0);
+    if (hit) return ok(`acessivel na Vercel (${hit.games} jogos; Cloudflare bloqueia fetch local)`);
+    return bad('acesso negado (cookie/URL expirados?)');
+  }
   return warn('HTTP ' + r.status);
 });
 
