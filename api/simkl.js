@@ -141,6 +141,20 @@ async function resolveTmdbI18n({ title, type, imdbId, tmdbId, season, number, fa
     }
   }
 
+  if (!tmdbRuntimeMin && imdbId) {
+    try {
+      const cr = await fetch(`https://v3-cinemeta.strem.io/meta/${kind === 'movie' ? 'movie' : 'series'}/${encodeURIComponent(imdbId)}.json`, {
+        headers: { 'User-Agent': UA },
+        signal: AbortSignal.timeout(2500)
+      });
+      if (cr.ok) {
+        const cd = await cr.json();
+        const mins = parseInt(cd?.meta?.runtime, 10);
+        if (Number.isFinite(mins) && mins > 0) tmdbRuntimeMin = mins;
+      }
+    } catch {}
+  }
+
   const out = { i18n, tmdbId: tid, tmdbRuntimeMin };
   if (gotDet) memo.set(key, { at: Date.now(), value: out });
   return out;
@@ -751,9 +765,18 @@ export default async function handler(req, res) {
     const since = live.startedAt - 60e3;
     if (same(S.lastDone) && ts(S.lastDone.watchedAt) >= since) return { state: 'ended', at: ts(S.lastDone.watchedAt) };
     const p = S.paused;
-    if (same(p) && ts(p.watchedAt) >= since) {
-      if (Date.now() - ts(p.watchedAt) < NUVIO_PAUSE_HOLD_MS) return { state: 'paused', at: ts(p.watchedAt), progress: Number(p.progress) };
-      return { state: 'ended', at: ts(p.watchedAt) };
+    if (same(p)) {
+      const pAt = ts(p.watchedAt);
+      if (pAt >= since) {
+        if ((live.seenAt || live.startedAt) > pAt + 15e3) {
+          return { state: 'resumed', at: live.seenAt || live.startedAt, progress: Number(p.progress) };
+        }
+        if (Date.now() - pAt < NUVIO_PAUSE_HOLD_MS) return { state: 'paused', at: pAt, progress: Number(p.progress) };
+        return { state: 'ended', at: pAt };
+      }
+      if (Date.now() - pAt < 12 * 3600e3) {
+        return { state: 'resumed', at: live.startedAt, progress: Number(p.progress) };
+      }
     }
     return null;
   };
@@ -763,6 +786,15 @@ export default async function handler(req, res) {
     if (!sess) {
       diag.picked = 'nuvio-addon-live';
       await reply(addonLive, false);
+      return true;
+    }
+    if (sess.state === 'resumed') {
+      const baseSec = Number.isFinite(sess.progress) ? Math.round(addonLive.durationSec * sess.progress / 100) : 0;
+      const extraSec = Math.max(0, Math.round((Date.now() - sess.at) / 1000));
+      const elapsedSec = Math.min(addonLive.durationSec, baseSec + extraSec);
+      const progress = Math.min(99, Math.round(elapsedSec / addonLive.durationSec * 100));
+      diag.picked = 'nuvio-addon-resumed';
+      await reply({ ...addonLive, elapsedSec, progress, watchedAt: new Date(Date.now() - elapsedSec * 1000).toISOString(), estimated: true }, false);
       return true;
     }
     if (sess.state === 'paused') {

@@ -69,7 +69,8 @@ async function record(info, kind) {
   const cur = jparse(curRaw);
   let hist = jparse(histRaw) || [];
   if (cur && cur.key === info.key && !cur.endedAt && !cur.paused && now - cur.at < SAME_ITEM_MS) {
-    await rcmd(['SET', CUR_KEY, JSON.stringify({ ...cur, seen: now, kind: cur.kind === 'subtitles' ? 'subtitles' : kind }), 'EX', 86400]);
+    const reopened = kind === 'subtitles' && now - (cur.seen || cur.at) > 60e3;
+    await rcmd(['SET', CUR_KEY, JSON.stringify({ ...cur, at: reopened ? now : cur.at, seen: now, kind: cur.kind === 'subtitles' ? 'subtitles' : kind }), 'EX', 86400]);
     return;
   }
   if (cur && now - cur.at >= MIN_WATCH_MS) {
