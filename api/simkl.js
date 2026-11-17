@@ -882,8 +882,8 @@ export default async function handler(req, res) {
       sid: x.sid || null,
       imdbId: x.imdbId || null,
       tmdbId: x.tmdbId || null,
-      poster: posterOf(x.media),
-      url: simklUrl(x.type, x.sid),
+      poster: posterUrl(x.media?.poster),
+      url: simklUrl(x.type, x.media),
       watchedAt: x.watchedAt || null
     }));
     const pub = await getPublicRecent();
